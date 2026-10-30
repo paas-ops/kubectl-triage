@@ -67,7 +67,7 @@ kubectl triage analyze /tmp/triage-demo
 | `--model`（Ollama / OpenAI-compatible） | ✅ 可选模型模式，默认关闭；预算/超时/轮次，失败降级退出码 3 |
 | `eval <dir>` | ✅ 本地评测（Top1/Top3/缺失/注入/降级；`--json`、`--now` 复现 golden） |
 | `telemetry status\|enable\|disable` | ✅ 匿名遥测 opt-in，默认关闭；字段白名单，绝不采集事故内容 |
-| 预编译 / 签名 / SBOM / Docker / Homebrew | ✅ `v0.3.0` tag 触发 release workflow 生成；Homebrew tap 待建立 |
+| 预编译 / 签名 / SBOM / Docker / Homebrew | ✅ `v0.3.0` tag 触发 release workflow 生成；Homebrew tap 已建立（新版本手工同步） |
 | `push`（企业版） | ⏳ M4 |
 
 ## 离线、安全与遥测

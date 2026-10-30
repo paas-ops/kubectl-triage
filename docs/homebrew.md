@@ -116,7 +116,7 @@ brew install --formula ./kubectl-triage.rb
 ```
 
 该路径依赖你的 Homebrew 版本与安全策略，**不是官方承诺的安装方式**；若报错，请使用
-[Release 二进制](install.md#2-release-二进制)。tap 建立后以 `brew tap && brew install` 为准。
+[Release 二进制](install.md#2-release-二进制)。tap 已建立，以 `brew tap && brew install` 为准。
 
 ## 供应链与校验
 
