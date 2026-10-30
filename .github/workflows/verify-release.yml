@@ -1,0 +1,84 @@
+name: verify-release
+
+# Manual workflow that re-verifies a published release end to end:
+# checksums, keyless cosign signatures, SBOM coverage and the GHCR image
+# signature. It complements the release workflow, which verifies its own
+# output at publish time (ADR-005 D2).
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to verify (e.g. v0.3.0)"
+        required: true
+        default: v0.3.0
+
+permissions:
+  contents: read
+  packages: read
+  id-token: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download release assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ inputs.tag }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          mkdir -p assets
+          gh release download "$TAG" -R "$REPO" -D assets \
+            -p checksums.txt -p checksums.txt.sig -p checksums.txt.pem \
+            -p "*.tar.gz" -p "*.cdx.json" -p "*.rb"
+          ls -la assets
+
+      - name: Verify sha256 checksums
+        run: |
+          set -euo pipefail
+          cd assets
+          sha256sum -c checksums.txt
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Verify keyless signature and certificate identity
+        env:
+          TAG: ${{ inputs.tag }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          cd assets
+          cosign verify-blob checksums.txt \
+            --certificate checksums.txt.pem \
+            --signature checksums.txt.sig \
+            --certificate-identity-regexp "https://github.com/$REPO/.github/workflows/release.yml@refs/tags/.*" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
+
+      - name: Verify SBOM exists for every archive
+        run: |
+          set -euo pipefail
+          cd assets
+          for archive in *.tar.gz; do
+            sbom="${archive%.tar.gz}.cdx.json"
+            test -f "$sbom" || { echo "missing SBOM for $archive"; exit 1; }
+          done
+          echo "SBOM coverage OK"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify container image signature
+        env:
+          TAG: ${{ inputs.tag }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          cosign verify "ghcr.io/$REPO/kubectl-triage:$TAG" \
+            --certificate-identity-regexp "https://github.com/$REPO/.github/workflows/release.yml@refs/tags/.*" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com"

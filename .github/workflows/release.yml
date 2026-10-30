@@ -125,3 +125,21 @@ jobs:
 
       - name: Sign container image
         run: cosign sign --yes "ghcr.io/paas-ops/kubectl-triage@${{ steps.image.outputs.digest }}"
+
+      # ADR-005 D2: the release must prove its own signatures before it is
+      # considered done. This mirrors the verify-release workflow.
+      - name: Verify published signatures
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh release download "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" -D verify-assets \
+            -p checksums.txt -p checksums.txt.sig -p checksums.txt.pem
+          cosign verify-blob verify-assets/checksums.txt \
+            --certificate verify-assets/checksums.txt.pem \
+            --signature verify-assets/checksums.txt.sig \
+            --certificate-identity-regexp "https://github.com/$GITHUB_REPOSITORY/.github/workflows/release.yml@refs/tags/.*" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
+          cosign verify "ghcr.io/${{ github.repository_owner }}/kubectl-triage@${{ steps.image.outputs.digest }}" \
+            --certificate-identity-regexp "https://github.com/$GITHUB_REPOSITORY/.github/workflows/release.yml@refs/tags/.*" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
