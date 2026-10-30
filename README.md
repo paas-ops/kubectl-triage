@@ -3,9 +3,10 @@
 轻量、离线优先的 Kubernetes 事故诊断 CLI。开发者在本地对历史故障数据做一次可追溯的诊断，
 不依赖控制平面、不上传证据；企业版再把单次诊断升级为团队事故库、评测、审计与私有部署。
 
-> 当前为 **M1 离线 MVP**：`init` / `import` / `validate` / `analyze` / `report` 可用，
-> 覆盖五类故障的确定性规则、证据引用/反证/缺失说明，并有 12 个 golden 回归。模型模式（M2）
-> 与企业 `push`（M4）尚未实现。正式评测前不得把结果作为生产决策唯一依据。
+> 当前为 **M2 模型与本地评测**：`init` / `import` / `validate` / `analyze` / `report` / `eval` 可用，
+> 支持五类故障确定性规则、证据引用/反证/缺失说明、可选模型（Ollama / OpenAI-compatible，
+> 默认关闭，失败自动降级）与本地 eval。企业 `push`（M4）尚未实现。正式评测前不得把结果
+> 作为生产决策唯一依据。
 
 ## 快速开始
 
@@ -46,16 +47,16 @@ kubectl triage analyze /tmp/triage-demo
 | `analyze <dir>` | ✅ 五类故障规则分析 + Markdown/JSON 报告（`--format`/`--out`/`--max-evidence`/`--fail-on-missing`，退出码 0/1/2/3/4） |
 | `report <dir>` | ✅ 从已有 `report.json` 重新渲染，不重新分析 |
 | `import alertmanager/kubectl/prometheus/loki` | ✅ 导入时扫描凭据，命中退出码 4 |
-| `--model` / Ollama | ⏳ M2 |
-| `eval` | ⏳ M2 |
+| `--model`（Ollama / OpenAI-compatible） | ✅ 可选模型模式，默认关闭；预算/超时/轮次，失败降级退出码 3 |
+| `eval <dir>` | ✅ 本地评测（Top1/Top3/缺失/注入/降级；`--json`、`--now` 复现 golden） |
 | `push`（企业版） | ⏳ M4 |
 
 ## 安全边界
 
-- 默认离线，不访问集群、不访问网络；
+- 默认离线，不访问集群、不访问网络；模型调用仅在显式 `--model` 时发生，且只访问用户配置的端点；
 - 不读取 Secret、不执行 `exec/apply/delete`；
 - 导入时扫描常见凭据模式，报告不回显密钥；
-- 所有修复建议均为只读，不自动执行。
+- 模型输出经 schema 校验、证据引用闭合与文本中和后才进入报告；所有修复建议均为只读，不自动执行。
 
 ## 文档
 
@@ -63,6 +64,9 @@ kubectl triage analyze /tmp/triage-demo
 - [拆分计划](docs/拆分计划.md)：仓库拆分、模块结构、12 周里程碑、任务拆分、发布与度量计划
 - [ADR-002 契约口径](docs/adr/ADR-002-契约口径.md)：golden 基线、CLI 参数默认值等 6 项口径决策
 - [ADR-003 M1 实现口径](docs/adr/ADR-003-M1实现口径.md)：证据/content_ref、退出码、脱敏、schema 校验与 CI 门禁
+- [ADR-004 M2 实现口径](docs/adr/ADR-004-M2实现口径.md)：模型 provider、预算/降级、注入防护与本地 eval
+- [模型模式](docs/model.md)：Ollama / OpenAI-compatible 配置、预算、降级与安全边界
+- [本地评测](docs/eval.md)：eval 用法、评分口径、JSON 契约与 CI 示例
 
 > 规划文档引用的 `CloudOps-Agent/创业商业方案.md` 属外部商业仓库，不随本仓库发布。
 

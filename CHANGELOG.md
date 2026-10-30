@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased — M2 模型与本地评测
+
+- Optional model mode: OpenAI-compatible and Ollama providers (`--model`, `--model-url`,
+  `--model-name`), temperature 0, JSON-only output, API key read from the environment only.
+- Budget, timeout and rounds: `--model-timeout` (60s), `--model-budget-usd` (1.0),
+  `--model-max-rounds` (3); transient retries; budget/round exhaustion degrades.
+- Safe degradation: any runtime model failure keeps the offline report with `degraded: true`
+  and exit code 3; configuration errors exit 1; `--offline` and `--model` stay mutually exclusive.
+- Output validation: report schema + evidence citation closure + URL/command neutralisation;
+  prompt-injection and exfiltration tests (stub provider only, redirects disabled).
+- Local eval: `kubectl-triage eval <cases-dir>` with Top1/Top3/missing/injection/degraded
+  scoring, stable `--json` contract and `--now` replay; 12/12 golden.
+- Docs: ADR-004, docs/model.md, docs/eval.md. No schema changes and no new dependencies.
+
 ## v0.1.0 — 2026-10-30
 
 First milestone release: the M1 offline MVP.
