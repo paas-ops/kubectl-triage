@@ -12,6 +12,7 @@
 > 私有部署在 CloudOps Agent 商业版，不在本仓库。正式评测前不得把结果作为生产决策唯一依据。
 >
 > 文档站（静态、可离线打开）：**https://paas-ops.github.io/kubectl-triage/** ·
+> 项目文档页：**https://paas-ops.github.io/kubectl-triage/project.html** ·
 > 站点源码 [site/index.html](site/index.html)（无构建步骤、无外部依赖）。
 
 ## 快速开始
@@ -122,7 +123,10 @@ kubectl-triage push ./incidents/2026-10-12-checkout-oom \
 ## 文档
 
 - 文档站：**https://paas-ops.github.io/kubectl-triage/**（静态站点，源码 [site/index.html](site/index.html)）
-- [项目文档](docs/PROJECT.md)：项目综合文档（定位、架构、契约、命令、安全、质量、里程碑、路线图）
+- [项目文档页（在线）](https://paas-ops.github.io/kubectl-triage/project.html)：由
+  [docs/PROJECT.md](docs/PROJECT.md) 生成的全量项目文档（生成脚本
+  [scripts/generate_project_page.py](scripts/generate_project_page.py)）
+- [项目文档（源）](docs/PROJECT.md)：项目综合文档（定位、架构、契约、命令、安全、质量、里程碑、路线图）
 - [下一步工作](docs/next-steps.md)：v1.0 宣布条件、P0/P1/P2 待办、发布与回滚流程
 - [5 分钟快速开始](docs/quickstart.md)：安装、init、validate、analyze、读报告、退出码与常见问题
 - [安装与校验](docs/install.md)：Release 资产、sha256 / cosign / SBOM、Docker、go install、Homebrew
@@ -187,6 +191,9 @@ go build ./...
 
 # 本地预览文档站（纯静态，无构建步骤）
 python3 -m http.server 8000 --directory site
+
+# 重新生成项目文档页（docs/PROJECT.md → site/project.html；--check 可校验是否过期）
+python3 scripts/generate_project_page.py
 ```
 
 CI 见 [.github/workflows/ci.yml](.github/workflows/ci.yml)；文档站由

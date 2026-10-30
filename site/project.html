@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<!--
+  Generated file: do not edit by hand.
+  Source: docs/PROJECT.md
+  Generator: scripts/generate_project_page.py
+  Static by design: the only subresource is ./styles.css; external absolute
+  links are documentation hyperlinks, never loaded resources.
+-->
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>kubectl-triage 项目文档</title>
+  <meta name="description" content="kubectl-triage 项目综合文档：定位、架构、数据契约、命令、安全、质量、里程碑与路线图（由 docs/PROJECT.md 生成）。">
+  <meta name="color-scheme" content="light dark">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">跳到主要内容</a>
+
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="brand" href="index.html" aria-label="返回 kubectl-triage 首页">
+        <svg class="brand-mark" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false">
+          <rect x="2" y="3.5" width="20" height="17" rx="3.5" fill="none" stroke="currentColor" stroke-width="1.6"></rect>
+          <path d="M6.2 9.2l2.3 2.3-2.3 2.3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path>
+          <path d="M11.4 14h5.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path>
+        </svg>
+        <span>kubectl-triage</span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="index.html">返回首页</a>
+        <a href="index.html#install">安装</a>
+        <a href="index.html#security">安全</a>
+        <a href="index.html#eval">评测</a>
+        <a href="project.html" aria-current="page">项目文档</a>
+        <a class="nav-github" href="https://github.com/paas-ops/kubectl-triage">GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main" class="section">
+    <div class="container project-doc">
+      <article>
+<h1 id="kubectl-triage-项目文档">kubectl-triage 项目文档</h1>
+<blockquote><p><strong>版本 v0.5.0</strong> · 2026-10-30 · Apache-2.0 · <a href="https://github.com/paas-ops/kubectl-triage">https://github.com/paas-ops/kubectl-triage</a></p><p>本文档是项目的综合说明与事实源入口：定位、架构、数据契约、命令、安全、质量、里程碑与路线图。详细口径以各链接文档与 ADR 为准。</p></blockquote>
+<h2 id="1-项目定位">1. 项目定位</h2>
+<p>kubectl-triage 是一个<strong>轻量、离线优先的 Kubernetes 事故诊断 CLI</strong>：开发者拿到一份脱敏的事故证据包，在本地执行一条命令，得到一份<strong>可复现、可追溯、可评审</strong>的 Markdown/JSON 诊断报告——不依赖控制平面、不上传生产证据、不要求账号。</p>
+<p>产品承诺：</p>
+<ul><li><strong>5 分钟内完成第一次本地诊断</strong>：无账号、无登录、无云端依赖，<code>init</code> 生成可跑通示例；</li><li><strong>历史事故可复盘</strong>：证据包可存档、可分享、可回归（golden + 本地 eval）；</li><li><strong>可信度来自证据</strong>：每条结论引用证据，并给出反证、缺失说明与置信分层，而不是模型口吻；</li><li><strong>默认安全</strong>：默认零网络、只读、不读 Secret；模型与推送均为显式 opt-in。</li></ul>
+<h2 id="2-目标用户与典型场景">2. 目标用户与典型场景</h2>
+<div class="table-wrap"><table><thead><tr><th>用户</th><th>场景</th><th>成功标准</th></tr></thead><tbody><tr><td>应用开发者</td><td>收到告警，本地只有 <code>kubectl</code> 输出和几段日志</td><td>不登平台即得到有证据的根因草稿</td></tr><tr><td>值班 SRE</td><td>事故后复盘，需要证据与结论留档</td><td>一份可审阅的 Markdown/JSON 报告</td></tr><tr><td>平台工程师</td><td>评估诊断工具是否值得团队采购</td><td>用自己脱敏的历史事故复跑与评测</td></tr><tr><td>安全/合规</td><td>生产日志不能出域</td><td>离线模式运行、证据哈希可核验</td></tr><tr><td>企业购买者</td><td>团队需要事故库、评测与审计</td><td>从 CLI 试点升级到企业版</td></tr></tbody></table></div>
+<h2 id="3-开源版与企业版边界">3. 开源版与企业版边界</h2>
+<p><strong>开源 CLI 免费做“一次、本地、单事故”的诊断；企业版卖“团队、评测、审计、私有化”。</strong></p>
+<div class="table-wrap"><table><thead><tr><th>能力</th><th>开源 CLI（免费）</th><th>企业版（CloudOps Agent）</th></tr></thead><tbody><tr><td>单次本地诊断 / 离线规则 / 可选模型 / MD+JSON 报告</td><td>✅ 不限次数</td><td>✅</td></tr><tr><td>本地 eval（golden + 正式集校验）</td><td>✅</td><td>✅（另有团队评测服务）</td></tr><tr><td>团队事故库 / 检索 / 负责人</td><td>❌</td><td>✅</td></tr><tr><td>审计（谁在何时看了什么、模型/版本）</td><td>❌</td><td>✅</td></tr><tr><td>SSO/RBAC/多租户/私有部署/SLA</td><td>❌</td><td>✅</td></tr><tr><td>企业推送</td><td>✅ 客户端（显式 opt-in）</td><td>✅ 服务端（库/去重/评测/审计）</td></tr></tbody></table></div>
+<p>详细边界与 FAQ 见 <a href="https://github.com/paas-ops/kubectl-triage/blob/main/docs/enterprise.md">企业版边界</a>；企业侧 G2–G5 不进入本仓库。</p>
+<h2 id="4-核心概念">4. 核心概念</h2>
+<div class="table-wrap"><table><thead><tr><th>概念</th><th>说明</th></tr></thead><tbody><tr><td><strong>事故包（bundle）</strong></td><td>一个目录：<code>incident.yaml</code> + 证据（k8s/metrics/logs/changes/alert.json）；本地、可存档</td></tr><tr><td><strong>证据（evidence）</strong></td><td>规范化条目：id / source / observed_at / collected_at / summary / content_ref / sha256 / stale</td></tr><tr><td><strong>报告（report）</strong></td><td><code>report.json</code>（schema_version 1.0，稳定接口）+ 由其渲染的 <code>report.md</code></td></tr><tr><td><strong>假设（hypothesis）</strong></td><td>最多 3 条，按置信排序；每条 ≥1 条有效证据；可带反证与缺失说明</td></tr><tr><td><strong>评测集（eval set）</strong></td><td>与事故包同构的用例集合 + <code>expected/report.json</code>；golden 与正式 100 例共用契约</td></tr><tr><td><strong>企业推送（push）</strong></td><td>显式配置的客户端：默认只发报告 + 证据哈希，可选脱敏证据包；协议 v1.0 公开</td></tr></tbody></table></div>
+<h2 id="5-系统架构">5. 系统架构</h2>
+<h3 id="51-模块">5.1 模块</h3>
+<div class="table-wrap"><table><thead><tr><th>模块</th><th>职责</th></tr></thead><tbody><tr><td><code>cmd/kubectl-triage</code></td><td>程序入口，装配 CLI 与版本信息（支持 <code>go install @version</code> 回退）</td></tr><tr><td><code>internal/cli</code></td><td>cobra 命令、flag、退出码、输出与人性化错误</td></tr><tr><td><code>internal/bundle</code></td><td>事故包加载/校验/脚手架、路径穿越防护、strict/standard/off 脱敏模式</td></tr><tr><td><code>internal/redact</code></td><td>凭据模式识别与 <code>[REDACTED]</code> 清洗（导入前、推送前复用）</td></tr><tr><td><code>internal/evidence</code></td><td>证据规范化：content_ref、时间、哈希、stale、时钟偏差、裁剪</td></tr><tr><td><code>internal/analyze</code></td><td>分析编排：证据抽取、规则引擎、反证/置信/缺失、报告组装</td></tr><tr><td><code>internal/analyze/rule</code></td><td>五类故障确定性规则（rule-v0.2）</td></tr><tr><td><code>internal/analyze/model</code></td><td>可选模型：OpenAI-compatible/Ollama、预算/超时/重试、输出校验与中和</td></tr><tr><td><code>internal/report</code></td><td>报告结构、JSON 序列化、Markdown 渲染、schema 校验</td></tr><tr><td><code>internal/importers</code></td><td>Alertmanager/kubectl/Prometheus/Loki 导入器（确定性归一化）</td></tr><tr><td><code>internal/eval</code></td><td>本地评测：Top1/Top3/缺失/注入/降级评分、集合校验（<code>--validate</code>）</td></tr><tr><td><code>internal/push</code></td><td>企业推送客户端：协议 1.0、幂等重试、dry-run、安全预检</td></tr><tr><td><code>internal/telemetry</code></td><td>opt-in 匿名遥测：默认关闭、10 字段白名单、best-effort</td></tr><tr><td><code>pkg/schema</code></td><td>公开 JSON Schema + 零依赖子集校验器 + 兼容性基线测试</td></tr></tbody></table></div>
+<h3 id="52-数据流">5.2 数据流</h3>
+<pre><code class="language-text">事故包目录 ──► bundle(Load/Validate, redact) ──► evidence(规范化/裁剪)
+                                              │
+                                              ├─► rule 引擎（五类规则）──► 报告（离线）
+                                              └─► model(可选) ── 校验/中和 ──► 报告（增强/降级）
+报告 ◄──────────────────────────────────────────┘
+  ├─► report.md / report.json（本地）
+  ├─► eval（与 expected 对比：Top1/Top3/缺失/注入/降级）
+  └─► push（显式配置；报告+证据哈希，可选证据包）</code></pre>
+<h2 id="6-命令参考">6. 命令参考</h2>
+<div class="table-wrap"><table><thead><tr><th>命令</th><th>用途</th><th>关键 flags</th></tr></thead><tbody><tr><td><code>version</code></td><td>版本/构建信息</td><td>—</td></tr><tr><td><code>init &lt;dir&gt;</code></td><td>生成最小可跑事故包</td><td>—</td></tr><tr><td><code>import &lt;source&gt; &lt;dir&gt;</code></td><td>导入告警/事件/指标/日志</td><td><code>--from</code>、<code>--name</code>、<code>--force</code></td></tr><tr><td><code>validate &lt;dir&gt;</code></td><td>schema、时间、脱敏与证据完整性校验</td><td><code>--redact strict|standard|off</code></td></tr><tr><td><code>analyze &lt;dir&gt;</code></td><td>规则分析 + 报告</td><td><code>--offline</code>、<code>--model</code>、模型 4 flag、<code>--format</code>、<code>--out</code>、<code>--max-evidence</code>、<code>--redact</code>、<code>--fail-on-missing</code></td></tr><tr><td><code>report &lt;dir&gt;</code></td><td>重新渲染已有报告（不重新分析）</td><td><code>--format</code>、<code>--out</code></td></tr><tr><td><code>eval &lt;cases-dir&gt;</code></td><td>本地评测</td><td><code>--json</code>、<code>--filter</code>、<code>--max-cases</code>、<code>--now</code>、<code>--validate</code>、<code>--min-cases</code>、<code>--compare</code>、模型 flags</td></tr><tr><td><code>telemetry status|enable|disable</code></td><td>opt-in 匿名遥测管理</td><td>—</td></tr><tr><td><code>push &lt;dir&gt;</code></td><td>推送报告到企业控制平面（显式 opt-in）</td><td><code>--endpoint</code>、<code>--include-evidence</code>、<code>--max-bundle-bytes</code>、<code>--timeout</code>、<code>--dry-run</code>、<code>--out</code></td></tr></tbody></table></div>
+<h3 id="退出码">退出码</h3>
+<div class="table-wrap"><table><thead><tr><th>码</th><th>含义</th></tr></thead><tbody><tr><td>0</td><td>成功</td></tr><tr><td>1</td><td>输入/配置错误（含 <code>--offline</code> 与 <code>--model</code> 冲突、push 配置/鉴权失败）</td></tr><tr><td>2</td><td>证据不足（<code>--fail-on-missing</code>）或评测存在不通过用例</td></tr><tr><td>3</td><td>模型/网络失败已降级（报告已写出并标注 degraded）</td></tr><tr><td>4</td><td>安全校验失败（发现敏感内容/越权数据）</td></tr></tbody></table></div>
+<h2 id="7-数据契约">7. 数据契约</h2>
+<h3 id="71-事故包输入">7.1 事故包（输入）</h3>
+<p><code>incident.yaml</code> 必填字段：<code>id, alertname, severity(critical|warning|info), cluster, namespace, workload, observed_at, collected_at, source</code>（RFC3339 时间）。</p>
+<p>证据文件（可选，按需）：<code>alert.json</code>、<code>k8s/events.json</code>、<code>k8s/pods.yaml</code>、<code>k8s/deployments.yaml</code>、<code>metrics/*.json</code>、<code>logs/*.log</code>、<code>changes/rollout.json</code>、<code>runbook.md</code>、<code>notes.md</code>。</p>
+<h3 id="72-报告输出">7.2 报告（输出）</h3>
+<p>顶层字段：<code>schema_version("1.0"), incident, generated_at, mode(offline|model), degraded, summary, evidence[], hypotheses[≤3], missing_data[], recommended_checks[], suggested_fix, limitations[], versions{}</code>。</p>
+<ul><li>证据字段：<code>id, source, observed_at, collected_at, summary, content_ref, query?, redaction?, sha256, stale, skew_seconds?</code>；</li><li><code>content_ref</code> 约定：整文件 <code>&lt;rel&gt;</code>、JSON 条目 <code>&lt;rel&gt;#items/&lt;n&gt;</code>、日志行<code>&lt;rel&gt;#L&lt;n&gt;</code>；</li><li>每条结论必须引用存在证据；反证与支持证据不得同 id；建议均为只读、不生成可执行脚本。</li></ul>
+<h3 id="73-版本与兼容">7.3 版本与兼容</h3>
+<ul><li>报告 <code>schema_version</code> 固定 <code>1.0</code>；v0.x 允许破坏性变更但需 CHANGELOG + 迁移说明；</li><li>v1.0 起至少兼容一个大版本；新增可选字段不破坏旧消费者（策略见 <a href="https://github.com/paas-ops/kubectl-triage/blob/main/docs/schema.md">schema 契约</a> 与<a href="https://github.com/paas-ops/kubectl-triage/blob/main/docs/adr/ADR-007-v1.0%E5%87%86%E5%A4%87.md">ADR-007</a>）；</li><li>兼容性由 <code>pkg/schema</code> 基线测试守护（<code>UPDATE_COMPAT=1</code> 显式变更 + review）。</li></ul>
+<h2 id="8-分析引擎">8. 分析引擎</h2>
+<h3 id="81-五类故障规则确定性rule-v02">8.1 五类故障规则（确定性，rule-v0.2）</h3>
+<div class="table-wrap"><table><thead><tr><th>故障类</th><th>典型信号</th><th>默认置信</th></tr></thead><tbody><tr><td>OOMKilled</td><td><code>OOMKilled</code>、<code>exitCode=137</code>、内存 limit 相关</td><td>high（≥2 独立来源且新鲜）</td></tr><tr><td>CrashLoopBackOff</td><td><code>CrashLoopBackOff</code>、<code>Back-off restarting</code></td><td>mid</td></tr><tr><td>ImagePullBackOff</td><td><code>ErrImagePull</code>、<code>pull access denied</code>、<code>manifest unknown</code></td><td>high</td></tr><tr><td>Pending</td><td><code>FailedScheduling</code>、资源不足/亲和性</td><td>mid</td></tr><tr><td>发布回归</td><td><code>changes/</code> 记录 + ReplicaSet/镜像差异</td><td>mid/low</td></tr></tbody></table></div>
+<p>每个假设带：证据引用、反证（如镜像曾成功拉取、探针失败、发布早于故障窗口）、置信分层（<code>high/mid/low</code>，stale/反证会降级）、缺失证据与下一步、只读修复建议。</p>
+<h3 id="82-可选模型默认关闭">8.2 可选模型（默认关闭）</h3>
+<ul><li>provider：OpenAI-compatible（<code>/v1/chat/completions</code>）/ Ollama（<code>/api/chat</code>）；温度 0、仅 JSON；</li><li>只访问配置端点、禁用重定向；证据视为不可信数据；模型输出经 schema + 引用闭合 + 文本中和；</li><li>预算/超时/轮次受控（默认 $1 / 60s / 3 轮）；任何运行时失败保留离线报告并标 <code>degraded</code>，退出码 3；配置错误退出码 1。详见 <a href="https://github.com/paas-ops/kubectl-triage/blob/main/docs/model.md">模型模式</a>。</li></ul>
+<h2 id="9-安全与隐私">9. 安全与隐私</h2>
+<ul><li><strong>默认离线</strong>：不访问集群、不访问网络；模型、push、遥测均显式 opt-in；</li><li><strong>只读</strong>：不读 Secret、不解析 kubeconfig、不执行 <code>exec/apply/delete</code>；修复建议均只读；</li><li><strong>输入安全</strong>：导入/校验/推送前扫描凭据模式；报告不回显密钥；越权/越界证据引用拒绝；</li><li><strong>注入防护</strong>：证据中“忽略指令/执行命令/外传”类文本不执行、不进入报告，模型输出二次中和；</li><li><strong>遥测默认关闭</strong>：仅 10 个白名单字段（版本/OS/架构/模式/耗时/证据条数等），绝不采集集群、命名空间、日志、证据正文、路径、密钥；<code>KUBECTL_TRIAGE_TELEMETRY=off</code> 强制关闭；</li><li><strong>供应链</strong>：Release 提供 sha256 + cosign keyless 签名 + CycloneDX SBOM；GHCR 镜像按 digest 签名。</li></ul>
+<p>详见 <a href="https://github.com/paas-ops/kubectl-triage/blob/main/docs/security.md">安全与数据流</a>。</p>
+<h2 id="10-分发与供应链">10. 分发与供应链</h2>
+<div class="table-wrap"><table><thead><tr><th>渠道</th><th>状态</th></tr></thead><tbody><tr><td>源码 <code>go install github.com/paas-ops/kubectl-triage/cmd/kubectl-triage@vX.Y.Z</code></td><td>✅</td></tr><tr><td>Release 资产（darwin/linux × amd64/arm64 + windows/amd64）</td><td>✅ v0.5.0 起含 Windows</td></tr><tr><td>Docker：<code>ghcr.io/paas-ops/kubectl-triage:vX.Y.Z</code>（distroless/nonroot）</td><td>✅ v0.3.0 起</td></tr><tr><td>Homebrew：<code>brew tap paas-ops/homebrew-tap &amp;&amp; brew install kubectl-triage</code></td><td>✅ 自动同步 formula</td></tr><tr><td>文档站：<a href="https://paas-ops.github.io/kubectl-triage/">https://paas-ops.github.io/kubectl-triage/</a></td><td>✅</td></tr><tr><td>签名/SBOM 校验</td><td>✅ <code>checksums.txt</code> + <code>.sig/.pem</code> + <code>*.cdx.json</code>，<code>verify-release</code> 可复验</td></tr></tbody></table></div>
+<p>发布流程：tag push → release workflow（GoReleaser v2.15.4 + cosign + SBOM + GHCR + 发布自校验）→ <code>verify-release</code> 复验 → tap 自动同步。安装与校验见 <a href="https://github.com/paas-ops/kubectl-triage/blob/main/docs/install.md">安装与校验</a>。</p>
+<h2 id="11-质量工程">11. 质量工程</h2>
+<div class="table-wrap"><table><thead><tr><th>项</th><th>数值/做法（v0.5.0）</th></tr></thead><tbody><tr><td>Go 包</td><td>18 个（16 个有测试，2 个无测试包为装配层）</td></tr><tr><td>代码规模</td><td>约 19k 行 Go（其中测试约 10k 行）</td></tr><tr><td>golden 用例</td><td>12 个（五类×2 + 缺失 + 注入），严格比对 + 确定性 + 反证不相交</td></tr><tr><td>评测</td><td><code>eval</code> 评分（Top1/Top3/缺失/注入/降级）+ <code>--validate</code> 集合结构门禁 + <code>--compare</code> 基线回归门禁</td></tr><tr><td>CI</td><td>4 个 workflow：ci（test/cross-build/windows-test/release-check/docker-build）、release、verify-release、pages</td></tr><tr><td>契约门禁</td><td>schema 基线测试、golden expected schema 校验、release 自验签</td></tr><tr><td>默认离线测试</td><td>push/model/telemetry 全部 stub/httptest，不触网</td></tr></tbody></table></div>
+<h2 id="12-里程碑与版本">12. 里程碑与版本</h2>
+<div class="table-wrap"><table><thead><tr><th>里程碑</th><th>版本</th><th>交付</th><th>验证</th></tr></thead><tbody><tr><td>M0 立项/骨架</td><td>—</td><td>仓库、license、schema v0、CLI 骨架、CI</td><td>初始提交，CI 绿</td></tr><tr><td>M1 离线 MVP</td><td>v0.1.0</td><td>契约（schema/退出码）、四导入器、脱敏、五类规则、12 golden、报告</td><td>13 包测试、12/12 golden、CI 5/5</td></tr><tr><td>M2 模型/评测</td><td>v0.2.0</td><td>OpenAI-compatible/Ollama、预算/超时/降级、注入防护、本地 eval</td><td>15 包测试、模型 stub E2E、eval 12/12</td></tr><tr><td>M3 Beta 分发</td><td>v0.3.0</td><td>GoReleaser 产物、cosign/SBOM、GHCR、Homebrew、Pages 站点、opt-in 遥测</td><td>Release 12 资产、verify-release 绿</td></tr><tr><td>M3.1 加固</td><td>—</td><td>tap 自动同步（无 PAT）、发布自验签、评测集契约</td><td>tap sync 成功、verify-release 复验</td></tr><tr><td>M4 企业桥</td><td>v0.4.0</td><td>push 客户端（协议 v1.0、幂等/重试/dry-run/证据包）、企业边界/试点/指标文档</td><td>E2E 8 场景、Release 12 资产、verify-release</td></tr><tr><td>M5 v1.0 准备</td><td>v0.5.0</td><td>schema 兼容基线、Windows amd64、eval --validate</td><td>16 测试包、windows-test、Release 14 资产</td></tr></tbody></table></div>
+<blockquote><p>完整 ADR：契约口径（ADR-002）、M1–M4 实现口径（ADR-003–006）、v1.0 准备（ADR-007）。</p></blockquote>
+<h2 id="13-指标与运营">13. 指标与运营</h2>
+<p>北极星不是 Star，而是四层漏斗：</p>
+<ol><li><strong>实际安装</strong>：Release 下载 / Homebrew analytics / GHCR 拉取（去重）；</li><li><strong>激活</strong>：opt-in <code>analyze</code> 事件（首次成功生成报告）；</li><li><strong>重复使用</strong>：激活后 4 周内 ≥2 次成功诊断（install_id 去重）；</li><li><strong>企业试点</strong>：合格申请 ≥10、进入试点 ≥3、转正/付费（90 天商业门槛）。</li></ol>
+<p>当前状态：工具链已就绪（遥测客户端、试点 issue 表单、playbook、周报模板），<strong>真实数字依赖对外发布与运营</strong>（截至 v0.5.0 尚未开始外部推广）。定义与周报模板见 <a href="https://github.com/paas-ops/kubectl-triage/blob/main/docs/metrics.md">指标漏斗</a>。</p>
+<h2 id="14-路线图与下一步">14. 路线图与下一步</h2>
+<div class="table-wrap"><table><thead><tr><th>优先级</th><th>事项</th><th>负责方</th></tr></thead><tbody><tr><td>P0</td><td>建设正式 100 例盲测集（脱敏、契约校验、双人标注、基线快照）</td><td>数据/评测</td></tr><tr><td>P0</td><td>Windows 实机冒烟验收（zip/哈希/插件/路径/CJK/CRLF）</td><td>Release/QA</td></tr><tr><td>P0</td><td>v1.0 宣布条件评审（评测 + 试点 + 兼容基线）</td><td>产品负责人</td></tr><tr><td>P1</td><td>试点招募与 28 天 playbook 执行、周报漏斗</td><td>GTM/创始人</td></tr><tr><td>P2</td><td>CLI <code>--now</code>、模型配置去重、push Retry-After/分片、Homebrew cask 迁移、文档站链接检查进 CI、Windows 代码签名等</td><td>Maintainer</td></tr></tbody></table></div>
+<p>完整清单、验收标准与回滚流程见 <a href="https://github.com/paas-ops/kubectl-triage/blob/main/docs/next-steps.md">下一步工作</a>。</p>
+<h2 id="15-项目结构">15. 项目结构</h2>
+<pre><code class="language-text">kubectl-triage/
+├── cmd/kubectl-triage/          # 程序入口
+├── internal/
+│   ├── cli/                     # 命令、flag、退出码
+│   ├── bundle/                  # 事故包加载/校验/脚手架/脱敏
+│   ├── redact/                  # 凭据识别与清洗
+│   ├── evidence/                # 证据规范化/裁剪/stale/偏差
+│   ├── analyze/                 # 分析编排 + rule/ + model/
+│   ├── report/                  # JSON/Markdown 渲染
+│   ├── importers/               # alertmanager/kubectl/prometheus/loki
+│   ├── eval/                    # 本地评测与集合校验
+│   ├── push/                    # 企业推送客户端
+│   └── telemetry/               # opt-in 匿名遥测
+├── pkg/schema/                  # 公开 schema + 校验器 + 兼容基线
+├── testdata/golden/             # 12 个 golden 事故包
+├── examples/oom/                # 5 分钟示例
+├── docs/                        # 需求/计划/ADR/安装/安全/评测/协议…
+├── site/                        # 静态文档站（GitHub Pages）
+└── .github/workflows/           # ci / release / verify-release / pages</code></pre>
+<h2 id="16-文档索引">16. 文档索引</h2>
+<div class="table-wrap"><table><thead><tr><th>文档</th><th>内容</th></tr></thead><tbody><tr><td><a href="https://github.com/paas-ops/kubectl-triage/blob/main/docs/%E9%9C%80%E6%B1%82%E6%96%87%E6%A1%A3.md">需求文档</a></td><td>产品定位、CLI 交互、证据规范、开源/商业边界、指标与验收</td></tr><tr><td><a href="https://github.com/paas-ops/kubectl-triage/blob/main/docs/%E6%8B%86%E5%88%86%E8%AE%A1%E5%88%92.md">拆分计划</a></td><td>仓库拆分、模块结构、12 周里程碑、WBS、发布与度量</td></tr><tr><td><a href="https://github.com/paas-ops/kubectl-triage/blob/main/docs/adr/ADR-002-%E5%A5%91%E7%BA%A6%E5%8F%A3%E5%BE%84.md">ADR-002</a> ~ <a href="https://github.com/paas-ops/kubectl-triage/blob/main/docs/adr/ADR-007-v1.0%E5%87%86%E5%A4%87.md">ADR-007</a></td><td>各阶段冻结的实现口径</td></tr><tr><td><a href="https://github.com/paas-ops/kubectl-triage/blob/main/docs/quickstart.md">5 分钟快速开始</a></td><td>安装、init、analyze、读报告、退出码</td></tr><tr><td><a href="https://github.com/paas-ops/kubectl-triage/blob/main/docs/install.md">安装与校验</a></td><td>Release 资产、sha256/cosign/SBOM、Docker、Windows、Homebrew</td></tr><tr><td><a href="https://github.com/paas-ops/kubectl-triage/blob/main/docs/security.md">安全与数据流</a></td><td>边界、权限清单、数据流、遥测隐私、供应链</td></tr><tr><td><a href="https://github.com/paas-ops/kubectl-triage/blob/main/docs/model.md">模型模式</a></td><td>Ollama/OpenAI-compatible、预算、降级与安全</td></tr><tr><td><a href="https://github.com/paas-ops/kubectl-triage/blob/main/docs/eval.md">本地评测</a> · <a href="https://github.com/paas-ops/kubectl-triage/blob/main/docs/eval-contract.md">评测集契约</a></td><td>eval 用法、评分、正式集契约与 --validate</td></tr><tr><td><a href="https://github.com/paas-ops/kubectl-triage/blob/main/docs/push-protocol.md">push 协议 v1.0</a> · <a href="https://github.com/paas-ops/kubectl-triage/blob/main/docs/enterprise.md">企业版边界</a></td><td>企业推送协议与开源/商业边界</td></tr><tr><td><a href="https://github.com/paas-ops/kubectl-triage/blob/main/docs/pilot-playbook.md">试点 playbook</a> · <a href="https://github.com/paas-ops/kubectl-triage/blob/main/docs/metrics.md">指标漏斗</a></td><td>28 天试点运营与北极星指标</td></tr><tr><td><a href="https://github.com/paas-ops/kubectl-triage/blob/main/docs/schema.md">schema 契约</a></td><td>报告/incident 字段与兼容策略</td></tr><tr><td><a href="https://github.com/paas-ops/kubectl-triage/blob/main/docs/next-steps.md">下一步工作</a></td><td>v1.0 条件、P0/P1/P2、发布与回滚</td></tr></tbody></table></div>
+<h2 id="17-贡献许可与安全披露">17. 贡献、许可与安全披露</h2>
+<ul><li>贡献流程：<a href="https://github.com/paas-ops/kubectl-triage/blob/main/CONTRIBUTING.md">CONTRIBUTING.md</a>（DCO，无需 CLA；不提交真实客户数据/凭据）；</li><li>许可：Apache-2.0（<a href="https://github.com/paas-ops/kubectl-triage/blob/main/LICENSE">LICENSE</a>）；</li><li>安全披露：请勿公开 issue，按 <a href="https://github.com/paas-ops/kubectl-triage/blob/main/SECURITY.md">SECURITY.md</a> 私密上报；</li><li>行为准则：<a href="https://github.com/paas-ops/kubectl-triage/blob/main/CODE_OF_CONDUCT.md">CODE_OF_CONDUCT.md</a>。</li></ul>
+      </article>
+      <p class="project-generated-note">
+        本页由 <code>scripts/generate_project_page.py</code> 从
+        <a href="https://github.com/paas-ops/kubectl-triage/blob/main/docs/PROJECT.md">docs/PROJECT.md</a>
+        生成（纯静态、无 JavaScript）；修改内容请更新源文档后重新运行生成脚本。
+      </p>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <div class="footer-brand">
+        <strong>kubectl-triage</strong>
+        <span>Apache-2.0 · 项目文档</span>
+      </div>
+      <nav class="footer-nav" aria-label="页脚导航">
+        <a href="index.html">文档首页</a>
+        <a href="https://github.com/paas-ops/kubectl-triage">GitHub</a>
+        <a href="https://github.com/paas-ops/kubectl-triage/blob/main/docs/PROJECT.md">PROJECT.md 源文档</a>
+        <a href="https://github.com/paas-ops/kubectl-triage/blob/main/CHANGELOG.md">Changelog</a>
+        <a href="https://github.com/paas-ops/kubectl-triage/blob/main/SECURITY.md">安全策略</a>
+      </nav>
+      <p class="footer-note">纯静态页面：无外部字体、脚本、CDN 或分析代码，可离线打开。</p>
+    </div>
+  </footer>
+</body>
+</html>

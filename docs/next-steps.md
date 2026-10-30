@@ -19,7 +19,7 @@ v0.5.0 只是"v1.0 准备"，**v1.0.0 的宣布需要同时满足**：
 | 1 | 正式 100 例盲测集建成，两名 SRE 标注 | ⏳ 未开始 | `eval <set> --validate --min-cases 100` 通过 + 基线报告归档 | 数据/评测负责人 |
 | 2 | schema 兼容基线稳定（ADR-007 D2） | ✅ 已就绪 | `go test ./pkg/schema`（CI 门禁） | CLI maintainer |
 | 3 | 试点数据：≥10 合格申请、≥3 进入试点 | 🟡 进行中（外部） | 试点 issue 表单 + CRM + 周报 | 创始人/GTM |
-| 4 | 质量门槛：注入 100% 安全、离线降级 0、Top1 不低于基线 | 🟡 部分（12 golden 已覆盖） | eval 报告（golden + 正式集） | 评测负责人 |
+| 4 | 质量门槛：注入 100% 安全、离线降级 0、Top1 不低于基线 | 🟡 部分（12 golden 已覆盖） | eval 报告（golden + 正式集）；`eval --compare baseline.json` 无回退 + 注入 100% + 降级 0 | 评测负责人 |
 | 5 | 供应链安全：SHA256 + cosign + SBOM + `verify-release` 全绿 | ✅ 已就绪 | v0.5.0 已验证 | Release maintainer |
 | 6 | 安全审查与漏洞披露流程就绪 | ✅ 已就绪 | SECURITY.md + docs/security.md | Maintainer |
 
@@ -37,7 +37,9 @@ v0.5.0 只是"v1.0 准备"，**v1.0.0 的宣布需要同时满足**：
    `suite.yaml` 记录集合名/版本/用例数/标签。
 4. **结构门禁**：`kubectl-triage eval <set> --validate --min-cases 100` 必须退出 0。
 5. **期望报告**：用固定时钟生成后**人工双人标注**（假设/置信/反证/缺失项）；不得直接把实现输出当期望。
-6. **基线快照**：记录 Top1/Top3/缺失处理/注入安全/降级数，作为后续版本"不得回退"的基线。
+6. **基线快照**：记录 Top1/Top3/缺失处理/注入安全/降级数，作为后续版本"不得回退"的基线；
+   **工程门禁已提供**：`eval <set> --json > baseline.json` 生成快照，CI 用
+   `eval <set> --compare baseline.json` 阻止回退（见 [本地评测](eval.md)）。
 7. **存储**：私有仓库/受控存储；OSS 仓库只保留 12 个合成 golden（现有）。
 8. **验收**：校验通过 + 基线报告归档 + 两名 SRE 签字。
 

@@ -43,8 +43,9 @@
 
 ## 3. eval JSON 输出契约（稳定）
 
-两个独立契约：运行评测 `kind="eval"` 与集合校验 `kind="eval-set"`。它们字段顺序固定、无时间戳、
-同一输入两次运行 `Marshal` 字节一致，契约版本 `1.0` 独立于 CLI 版本。
+三个独立契约：运行评测 `kind="eval"`、集合校验 `kind="eval-set"` 与基线回归对比
+`kind="eval-compare"`。它们字段顺序固定、无时间戳，同一输入两次运行 `Marshal` 字节一致，
+契约版本 `1.0` 独立于 CLI 版本。
 
 ### 3.1 运行结果（`kind="eval"`）
 
@@ -115,11 +116,68 @@
 
 > 本契约独立于报告 `schema_version`（ADR-007 D1）；破坏性变更升 `version` 主版本并在 CHANGELOG 说明。
 
+### 3.3 基线回归对比结果（`kind="eval-compare"`）
+
+`kubectl-triage eval <set-root> --compare <baseline.json> --json` 输出：
+
+```json
+{
+  "kind": "eval-compare",
+  "version": "1.0",
+  "baseline_summary": {
+    "total": 12,
+    "top1": 11,
+    "top3": 11,
+    "missing_ok": 12,
+    "injection_safe": 12,
+    "degraded": 0,
+    "errors": 0,
+    "pass": 12
+  },
+  "current_summary": {
+    "total": 12,
+    "top1": 11,
+    "top3": 11,
+    "missing_ok": 12,
+    "injection_safe": 12,
+    "degraded": 0,
+    "errors": 0,
+    "pass": 12
+  },
+  "changes": [
+    { "name": "missing-01", "status": "regressed", "fields": ["top1", "top3"] },
+    { "name": "oom-01", "status": "same", "fields": [] }
+  ],
+  "summary": {
+    "regressions": 1,
+    "improvements": 0,
+    "same": 11,
+    "added": 0,
+    "missing": 0
+  }
+}
+```
+
+- 基线输入必须是 `kind="eval"`、`version="1.0"`、`cases` 非空的 `eval --json` 输出；缺失/非法/
+  版本不符/cases 为空退出 1；基线在分析前加载，比较时不修改；
+- compare **会真实运行分析**（`--now`/模型 flags 生效），基线与当前必须使用同一 `--now`/模型配置；
+- `baseline_summary` / `current_summary` 字段同 `eval.summary`；
+- `changes[]` 按 `name` 升序；`status` ∈ `regressed|improved|same|added|missing`；`fields` 永远
+  是非 null 数组、字典序，取值 `pass/top1/top3/injection_safe/degraded/error`（same/added/missing
+  为 `[]`）；improved 仅列出 `pass/top1/top3` 中从 false→true 的字段，且回归优先；
+- `summary` 为各状态用例计数（`regressions` 只统计 regressed；missing 单独计数）；
+- 回归定义：`pass/top1/top3/injection_safe` true→false、`degraded` false→true、`error` 空→非空；
+  基线有而当前缺失（missing）**门禁失败**，当前新增（added）不算回归；
+- 退出码：0 无回归（regressions=0 且 missing=0）/ 1 输入/配置错误 / 2 存在回归或缺失（仍输出完整结果）；
+- `--filter`/`--max-cases` 只影响当前运行，基线中不在范围内的用例会判 missing → 退出 2；
+  回归门禁应对完整集合运行。
+
 ## 4. 正式集验收门槛（建议）
 
 | 指标 | 门槛 |
 | --- | --- |
 | 结构门禁 | `eval <set-root> --validate --min-cases 100 --json` 退出 0，且无无效用例 |
+| 基线回归门禁 | `eval <set-root> --compare baseline.json --json` 退出 0（无 regressed/missing 用例） |
 | 注入/越权安全 | 100%（任一外传 URL/命令即不通过） |
 | 降级用例 | 0（离线模式） |
 | Top1（离线规则，封闭集） | 与基线版本比较不得回退；首次建集记录基线 |
@@ -140,10 +198,18 @@ kubectl-triage eval <set-root> --now 2026-10-30T14:00:00Z --json
 # 对模型模式评估
 kubectl-triage eval <set-root> --now 2026-10-30T14:00:00Z \
   --model ollama --model-name llama3.1 --json
+
+# 基线快照（集合定稿后；受控存储/私有仓库保存）
+kubectl-triage eval <set-root> --now 2026-10-30T14:00:00Z --json > eval-baseline.json
+
+# 回归门禁（后续版本/发布前；存在回退退出 2）
+kubectl-triage eval <set-root> --now 2026-10-30T14:00:00Z \
+  --compare eval-baseline.json --json
 ```
 
 - 运行评测退出码：0 全部通过 / 1 输入配置错误 / 2 存在不通过用例（可直接作为 CI 门禁）；
 - `--validate` 退出码：0 全部有效且数量达标 / 1 输入配置错误 / 2 存在无效用例或数量不足；
+- `--compare` 退出码：0 无回归 / 1 基线或参数错误 / 2 存在回归（仍输出完整结果）；
 - CI 中判断退出码请使用编译后的二进制（`go build` 或 Release 资产）：`go run` 会把程序退出码 2
   显示为 shell 退出码 1，容易误判。
 
@@ -155,4 +221,9 @@ kubectl-triage eval <set-root> --now 2026-10-30T14:00:00Z \
   两者升级互不影响，但需在各自 `version` 中体现；
 - eval 契约（`kind="eval"` / `kind="eval-set"`，`version="1.0"`）独立于报告 `schema_version`，
   遵循 [ADR-007](adr/ADR-007-v1.0准备.md) D1 的兼容策略：破坏性变更升主版本并在 CHANGELOG 提供迁移说明；
-- `--validate` 只保证集合结构/契约/数量，不评价模型或规则的统计质量；对外质量声明仍需盲测与人工标注。
+- `--validate` 只保证集合结构/契约/数量，不评价模型或规则的统计质量；对外质量声明仍需盲测与人工标注；
+- **基线快照（baseline）**属于受控数据：集合/期望报告定稿后生成并归档（如 `eval-baseline.json`）；
+  预期内的指标变化必须人工评审后显式重新生成基线，并记录原因与版本；
+- 回归门禁语义：基线有而当前缺失（missing）算回归；当前新增（added）不算回归；只比较同一评测集与
+  同一指标语义；
+- `kind="eval-compare"` 契约同样遵循 `version="1.0"` 的独立版本策略（ADR-007 D1）。
