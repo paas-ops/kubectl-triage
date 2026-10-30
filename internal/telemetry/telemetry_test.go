@@ -3,6 +3,7 @@ package telemetry
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -87,8 +88,17 @@ func TestEnablePersistsStableInstallIDAndDisableKeepsIt(t *testing.T) {
 	if err != nil {
 		t.Fatalf("config file must exist: %v", err)
 	}
-	if got := info.Mode().Perm(); got != 0o600 {
-		t.Fatalf("config file mode = %o, want 600", got)
+	if !info.Mode().IsRegular() {
+		t.Fatalf("config file must be a regular file, mode = %v", info.Mode())
+	}
+	// Windows does not expose Unix permission bits: os.Chmod only toggles the
+	// read-only attribute and Mode().Perm() reports 0666/0444. Keep the strict
+	// 0600 assertion on Unix targets; on Windows the readable content check
+	// below covers the file instead.
+	if runtime.GOOS != "windows" {
+		if got := info.Mode().Perm(); got != 0o600 {
+			t.Fatalf("config file mode = %o, want 600", got)
+		}
 	}
 
 	raw, err := os.ReadFile(path)
@@ -258,7 +268,10 @@ func TestConfigDirPrecedence(t *testing.T) {
 		t.Setenv(ConfigDirEnv, "")
 		t.Setenv(XDGConfigHomeEnv, "")
 		home := t.TempDir()
+		// os.UserHomeDir reads HOME on Unix and USERPROFILE on Windows; set both
+		// so the fallback is exercised on every CI target.
 		t.Setenv("HOME", home)
+		t.Setenv("USERPROFILE", home)
 		dir, err := Dir()
 		if err != nil {
 			t.Fatalf("Dir: %v", err)

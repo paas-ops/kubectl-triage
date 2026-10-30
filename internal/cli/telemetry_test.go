@@ -230,7 +230,10 @@ func TestTelemetryCommandErrors(t *testing.T) {
 	t.Run("unresolvable config directory", func(t *testing.T) {
 		t.Setenv(telemetry.ConfigDirEnv, "")
 		t.Setenv(telemetry.XDGConfigHomeEnv, "")
+		// os.UserHomeDir reads HOME on Unix and USERPROFILE on Windows; clear
+		// both so the config directory is truly unresolvable on every CI target.
 		t.Setenv("HOME", "")
+		t.Setenv("USERPROFILE", "")
 		requireCode(t, run(t, "telemetry", "status"), 1)
 	})
 }
