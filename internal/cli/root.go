@@ -53,6 +53,7 @@ func NewRoot(version, commit, date string) *cobra.Command {
 		newAnalyzeCmd(version),
 		newReportCmd(),
 		newEvalCmd(),
+		newTelemetryCmd(),
 	)
 	return root
 }
@@ -166,6 +167,7 @@ func newAnalyzeCmd(version string) *cobra.Command {
 			"path ending in .json/.md (only when --format selects a single format); it defaults to the bundle directory.",
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			startedAt := time.Now()
 			dir := args[0]
 			mode, err := redact.ParseMode(redactMode)
 			if err != nil {
@@ -225,6 +227,10 @@ func newAnalyzeCmd(version string) *cobra.Command {
 			if summary := strings.TrimSpace(rep.Summary); summary != "" {
 				fmt.Fprintf(cmd.OutOrStdout(), "summary: %s\n", summary)
 			}
+
+			// Opt-in telemetry is strictly best-effort: it never changes the exit
+			// code, stdout, or the written report (ADR-005 D6).
+			recordAnalyzeTelemetry(cmd, version, startedAt, rep)
 
 			// An explicit CI gate wins over the model-fallback signal when both
 			// apply, so --fail-on-missing always reports 2 (ADR-004 D3/D8).
