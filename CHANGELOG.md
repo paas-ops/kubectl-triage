@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased — M2 模型与本地评测
+## v0.2.0 — 2026-10-30
+
+Optional model providers and the local evaluation harness.
 
 - Optional model mode: OpenAI-compatible and Ollama providers (`--model`, `--model-url`,
   `--model-name`), temperature 0, JSON-only output, API key read from the environment only.
