@@ -5,7 +5,7 @@
 [ADR-004](adr/ADR-004-M2实现口径.md)、[ADR-005](adr/ADR-005-M3实现口径.md)；漏洞上报见
 [SECURITY.md](../SECURITY.md)。
 
-一句话：**默认零网络、只读、不上传证据；模型与遥测都是显式 opt-in。**
+一句话：**默认零网络、只读、不上传证据；模型、企业 push 与遥测都是显式 opt-in。**
 
 ## 安全边界
 
@@ -13,6 +13,7 @@
 | --- | --- | --- |
 | 数据出域 | 默认不发出任何数据 | 不传 `--model` 时不创建任何 outbound 请求；`--offline` 是硬保证 |
 | 模型联网 | 只在显式 `--model` 时发生 | 只访问 `--model-url` 配置的端点；禁用 HTTP 重定向；不访问证据中的 URL |
+| 企业推送 | 只在显式配置时联网 | 需 `--endpoint`（或 `KUBECTL_TRIAGE_ENTERPRISE_ENDPOINT`）+ `KUBECTL_TRIAGE_ENTERPRISE_TOKEN`；只访问配置端点；TLS 强校验、禁用重定向；默认只发报告+证据哈希，`--include-evidence` 才上传脱敏证据包；推送前敏感预检失败 → 退出 4 |
 | 集群访问 | 不连接集群 | 不读取 `KUBECONFIG`、不调用 Kubernetes API；只消费本地事故包 |
 | 只读 | 不产生任何写操作 | 不调用 apply/delete/exec，不执行修复建议；报告只写入本地文件 |
 | Secret | 不读取 Secret | CLI 不访问集群，因此无法读取 Secret；对用户提供的事故包做敏感模式扫描 |
@@ -60,6 +61,12 @@
     └─► HTTP(S) POST 仅到达 --model-url 配置的端点（禁重定向；证据文本会发送给该端点）
          └─► 运行时失败：保留离线报告 + degraded=true + limitations 记录原因 + 退出码 3
 
+企业推送路径（可选，显式配置）：
+  push <dir> --endpoint <enterprise-control-plane>
+    └─► KUBECTL_TRIAGE_ENTERPRISE_TOKEN 只从 env 读取；POST {endpoint}/v1/push
+         └─► 默认只发报告 + 证据哈希；--include-evidence 才附加脱敏 tar.gz
+              └─► 推送前 strict 校验 + 敏感扫描：失败退出 4、不发送；网络/429/5xx 重试耗尽退出 3
+
 遥测路径（默认关闭）：
   analyze 成功写报告后
     └─► 若已显式 enable 且配置了端点：HTTP(S) POST 到 KUBECTL_TRIAGE_TELEMETRY_URL
@@ -70,6 +77,8 @@
 
 - **模型模式会把证据包内容发送给你配置的端点**——端点选择即数据边界决定；敏感环境请用本地
   Ollama 或企业自建网关；
+- **企业 push 只把已脱敏报告发给显式配置的端点**：默认不含证据正文（只发哈希），
+  `--include-evidence` 才附加脱敏证据包；令牌只在 `KUBECTL_TRIAGE_ENTERPRISE_TOKEN` 环境变量中；
 - 遥测通路与诊断通路完全独立：遥测关闭/失败不影响分析，也不会把报告或证据写入遥测；
 - 报告与事故包都留在本地；CLI 没有任何云端存储或账号体系。
 
@@ -81,8 +90,10 @@
 | 写入 `report.md` / `report.json` | 需要 | 默认写事故包目录；`--out` 可指定目录或单格式文件 |
 | 读取 `KUBECONFIG` / 集群 API / Secret | **不需要（且不使用）** | 不访问集群；不解析 kubeconfig；不存在 Secret 读取路径 |
 | `exec` / `apply` / `delete` 等写操作 | **不执行** | 报告中的修复建议明确标注只读、不自动执行 |
-| 网络访问 | 默认不需要 | 模型模式仅访问配置端点；遥测 opt-in 且需显式配置端点 |
+| 网络访问 | 默认不需要 | 模型模式仅访问配置端点；企业 push 仅访问 `--endpoint`；遥测 opt-in 且需显式配置端点 |
 | `KUBECTL_TRIAGE_MODEL_KEY` / `OPENAI_API_KEY` | 仅模型模式 | 只从环境变量读取；不写入 flag、报告、日志或遥测 |
+| `KUBECTL_TRIAGE_ENTERPRISE_ENDPOINT` | 仅 `push` | 企业控制平面端点（也可用 `--endpoint`）；必须 https，仅 loopback 允许 http |
+| `KUBECTL_TRIAGE_ENTERPRISE_TOKEN` | 仅 `push` | 令牌只从环境变量读取；无对应 flag，不落盘、不在报告/日志/错误信息中回显 |
 | `KUBECTL_TRIAGE_CONFIG_DIR` | 可选 | 覆盖遥测配置目录；见下文 |
 | `KUBECTL_TRIAGE_TELEMETRY_URL` | 可选 | 遥测端点覆盖；未设置则事件丢弃 |
 | `KUBECTL_TRIAGE_TELEMETRY` | 可选 | 设为 `off` 强制关闭遥测（大小写不敏感） |
@@ -229,7 +240,11 @@ rm -rf "$cfg"
 - 报告只写本地：事故包内 `report.json` / `report.md`，或 `--out` 指定路径；
 - 报告正文不含 Secret、token、完整环境变量；Markdown 由 JSON 渲染，内容一致；
 - 证据摘要会进入报告（供评审），**摘要由已脱敏证据生成**；分享报告前仍按团队规范确认；
-- `eval` 只读用例目录，不修改 golden 数据；注入扫描的临时渲染文件用后删除。
+- `eval` 只读用例目录，不修改 golden 数据；注入扫描的临时渲染文件用后删除；
+- `push` 只读报告与证据包，不修改本地文件；推送失败不影响本地报告；证据正文仅显式
+  `--include-evidence` 才上传；
+- `--dry-run` / `--out` 写出的 payload 同样属于敏感数据（含报告，可能含证据包），但不含企业
+  令牌；请按企业规范保管并及时删除。
 
 ## 漏洞上报
 
@@ -248,5 +263,6 @@ rm -rf "$cfg"
 - [模型模式](model.md)：provider、预算、降级与注入防护
 - [本地评测](eval.md)：注入安全评分与确定性回归
 - [企业试点](pilot.md)：安全评审如何进入试点
+- [Push 协议 1.0](push-protocol.md) · [开源版与企业版](enterprise.md)：企业桥网络边界与协议
 - [ADR-005：M3 实现口径](adr/ADR-005-M3实现口径.md)（D2 签名/SBOM、D6 遥测）
 - [SECURITY.md](../SECURITY.md)：漏洞上报流程

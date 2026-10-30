@@ -3,10 +3,12 @@
 轻量、离线优先的 Kubernetes 事故诊断 CLI。开发者在本地对历史故障数据做一次可追溯的诊断，
 不依赖控制平面、不上传证据；企业版再把单次诊断升级为团队事故库、评测、审计与私有部署。
 
-> 当前为 **M3 Beta 分发阶段**（Beta 发布由 `v0.3.0` tag 触发）：`init` / `import` / `validate` /
-> `analyze` / `report` / `eval` / `telemetry` 可用，支持五类故障确定性规则、证据引用/反证/缺失说明、
-> 可选模型（默认关闭、失败自动降级）、本地 eval，以及预编译、签名、SBOM、Docker、Homebrew 的分发流水线。
-> 企业 `push`（M4）尚未实现。正式评测前不得把结果作为生产决策唯一依据。
+> 当前为 **M4 企业桥（目标版本 `v0.4.0`）**：`init` / `import` / `validate` / `analyze` /
+> `report` / `eval` / `telemetry` / `push` 可用，支持五类故障确定性规则、证据引用/反证/缺失说明、
+> 可选模型（默认关闭、失败自动降级）、本地 eval、opt-in 遥测，以及预编译 / 签名 / SBOM / Docker /
+> Homebrew 分发。`push` 是可选的企业推送客户端（显式配置，默认只发报告与证据哈希），公开协议 1.0；
+> 企业事故库、评测集托管、审计与私有部署在 CloudOps Agent 商业版，不在本仓库。正式评测前不得把
+> 结果作为生产决策唯一依据。
 >
 > 文档站（静态、可离线打开）：**https://paas-ops.github.io/kubectl-triage/** ·
 > 站点源码 [site/index.html](site/index.html)（无构建步骤、无外部依赖）。
@@ -68,7 +70,34 @@ kubectl triage analyze /tmp/triage-demo
 | `eval <dir>` | ✅ 本地评测（Top1/Top3/缺失/注入/降级；`--json`、`--now` 复现 golden） |
 | `telemetry status\|enable\|disable` | ✅ 匿名遥测 opt-in，默认关闭；字段白名单，绝不采集事故内容 |
 | 预编译 / 签名 / SBOM / Docker / Homebrew | ✅ `v0.3.0` tag 触发 release workflow 生成；Homebrew formula 由 tap workflow 自动同步 |
-| `push`（企业版） | ⏳ M4 |
+| `push <dir>`（企业推送，可选） | ✅ 显式配置端点/令牌；默认只发报告与证据哈希；`--dry-run`；退出码 0/1/3/4（`v0.4.0` 起） |
+
+## 企业桥：push（可选）
+
+`push` 把已脱敏的本地报告显式同步到企业控制平面，是 OSS 侧唯一的企业桥能力（接收端与团队化
+能力由商业版实现）：
+
+```bash
+export KUBECTL_TRIAGE_ENTERPRISE_TOKEN=...     # 仅环境变量，不接受 flag
+
+# 先 dry-run：构建 payload 与摘要，不联网，可 --out 落盘 JSON 供审计
+kubectl-triage push ./incidents/2026-10-12-checkout-oom \
+  --endpoint https://control.example.com --dry-run
+
+# 正式推送（默认只发报告与证据哈希）
+kubectl-triage push ./incidents/2026-10-12-checkout-oom \
+  --endpoint https://control.example.com
+
+# 显式包含脱敏证据包（确定性 tar.gz + base64）
+kubectl-triage push ./incidents/2026-10-12-checkout-oom \
+  --endpoint https://control.example.com --include-evidence
+```
+
+- 端点/令牌缺失 → 退出码 1，零网络请求；端点必须 `https`（loopback 本地联调允许 http）；
+- 退出码：`0` 成功；`1` 配置 / 鉴权 / 被拒绝（4xx）；`3` 网络 / 超时 / 429 / 5xx（重试耗尽）；
+  `4` 推送前安全校验失败（报告含敏感模式等）；
+- 请求字段、幂等、重试、证据包与错误码见 [docs/push-protocol.md](docs/push-protocol.md)；
+  OSS 与企业版边界见 [docs/enterprise.md](docs/enterprise.md)。
 
 ## 离线、安全与遥测
 
@@ -96,8 +125,13 @@ kubectl triage analyze /tmp/triage-demo
 - [模型模式](docs/model.md)：Ollama / OpenAI-compatible 配置、预算、降级与安全边界
 - [本地评测](docs/eval.md)：eval 用法、评分口径、JSON 契约与 CI 示例
 - [评测集契约](docs/eval-contract.md)：正式 100 例评测集的目录/数据契约与企业版共用 schema
+- [Push 协议 1.0](docs/push-protocol.md)：企业控制平面服务端实现的公开契约（端点/幂等/重试/证据包/错误码）
+- [开源版与企业版](docs/enterprise.md)：OSS 与企业版能力边界、push 定位、G2–G5 不在本仓库
 - [企业试点](docs/pilot.md)：试点资格、28 天流程、验收口径与申请入口
+- [试点运营手册](docs/pilot-playbook.md)：28 天时间线、验收口径、数据边界与复盘模板
+- [指标漏斗与周报](docs/metrics.md)：安装→激活→重复→试点口径、周报模板与反虚荣指标
 - [ADR-005 M3 实现口径](docs/adr/ADR-005-M3实现口径.md)：发布产物、签名/SBOM、Docker/Homebrew、文档站、遥测
+- [ADR-006 M4 实现口径](docs/adr/ADR-006-M4实现口径.md)：push 客户端与公开协议 1.0、幂等/重试、证据包
 - [ADR-002 契约口径](docs/adr/ADR-002-契约口径.md) · [ADR-003 M1](docs/adr/ADR-003-M1实现口径.md) ·
   [ADR-004 M2](docs/adr/ADR-004-M2实现口径.md)
 - [需求文档](docs/需求文档.md)：产品定位、CLI 交互、证据规范、开源/商业边界、指标与验收标准
@@ -113,14 +147,17 @@ kubectl triage analyze /tmp/triage-demo
 
 - [提交试点申请](https://github.com/paas-ops/kubectl-triage/issues/new?template=pilot-request.yml)
   （表单字段见 [.github/ISSUE_TEMPLATE/pilot-request.yml](.github/ISSUE_TEMPLATE/pilot-request.yml)）
-- [试点指南](docs/pilot.md)
+- [试点指南](docs/pilot.md) · [试点运营手册（28 天）](docs/pilot-playbook.md) ·
+  [指标口径](docs/metrics.md)
+- 企业桥：[Push 协议 1.0](docs/push-protocol.md) · [开源版与企业版](docs/enterprise.md)
 
 ## 开源与商业边界
 
 **开源 CLI 免费做“一次、本地、单事故”的诊断；企业版卖“团队、评测、审计、私有化”。**
 
-- 开源版：Apache-2.0，单次诊断不限次数、一次一个事故包；
-- 企业版（CloudOps Agent）：团队事故库、评测、审计、SSO/RBAC、私有部署与 SLA；
+- 开源版：Apache-2.0，单次诊断不限次数、一次一个事故包；企业桥只提供 `push` 客户端与公开协议 1.0；
+- 企业版（CloudOps Agent）：团队事故库、评测、审计、SSO/RBAC、私有部署与 SLA；push 接收端与
+  G2–G5 企业能力不在本仓库（见 [docs/enterprise.md](docs/enterprise.md) 与 [docs/push-protocol.md](docs/push-protocol.md)）；
 - 不通过阉割单次诊断收费。
 
 ## 北极星指标
@@ -130,6 +167,8 @@ kubectl triage analyze /tmp/triage-demo
 1. **实际安装**：Release / Homebrew / 容器拉取的去重安装数
 2. **重复使用**：完成首次诊断后 4 周内再次诊断的开发者比例
 3. **企业试点请求**：来自 CLI/文档/评测内容的合格试点申请数
+
+口径、采集来源、周报模板与反虚荣指标见 [docs/metrics.md](docs/metrics.md)。
 
 ## 开发
 

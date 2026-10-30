@@ -3,9 +3,10 @@
 目标：**5 分钟内**完成第一次本地诊断——装好 CLI、生成示例事故包、跑出带证据引用的报告。
 全程不需要集群账号、不需要上传任何数据；第一次分析与真实事故诊断的形状完全一样。
 
-> 当前为 **M3 Beta**：`init` / `import` / `validate` / `analyze` / `report` / `eval` 可用，
-> 可选模型与本地 eval 已就绪；企业 `push`（M4）尚未实现。安装方式见
-> [docs/install.md](install.md)，本文默认已安装 `kubectl-triage`。
+> 当前为 **M4 企业桥**：`init` / `import` / `validate` / `analyze` / `report` / `eval` 可用，
+> 可选模型与本地 eval 已就绪；企业 `push` 已提供，需显式配置企业端点与令牌（可选，见
+> [Push 协议](push-protocol.md)）。安装方式见 [docs/install.md](install.md)，
+> 本文默认已安装 `kubectl-triage`。
 
 ## 0. 安装
 
