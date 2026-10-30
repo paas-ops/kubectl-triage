@@ -1,25 +1,26 @@
 <!DOCTYPE html>
 <!--
-  kubectl-triage documentation site.
+  kubectl-triage documentation site (English, default).
+  Chinese version: index-zh.html.
   Static by design: the only subresource is ./styles.css.
   No external CDN, fonts, scripts, images or analytics. Documents themselves live in
   the repository; absolute GitHub links below are documentation hyperlinks, not resources.
 -->
-<html lang="zh-CN">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>kubectl-triage — 离线优先的 Kubernetes 事故诊断 CLI</title>
-  <meta name="description" content="kubectl-triage 把一次历史故障变成可复现、可追溯、可评审的本地诊断报告：默认零网络、只读、不读取 Secret，支持可选模型与本地 eval。">
+  <title>kubectl-triage — Offline-first Kubernetes incident triage CLI</title>
+  <meta name="description" content="kubectl-triage turns a past incident into a reproducible, traceable and reviewable local diagnosis report: zero network by default, read-only, no Secret access, with optional model and local evaluation.">
   <meta name="color-scheme" content="light dark">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <a class="skip-link" href="#main">跳到主要内容</a>
+  <a class="skip-link" href="#main">Skip to main content</a>
 
   <header class="site-header">
     <div class="container header-inner">
-      <a class="brand" href="#top" aria-label="kubectl-triage 首页">
+      <a class="brand" href="#top" aria-label="kubectl-triage home">
         <svg class="brand-mark" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false">
           <rect x="2" y="3.5" width="20" height="17" rx="3.5" fill="none" stroke="currentColor" stroke-width="1.6"></rect>
           <path d="M6.2 9.2l2.3 2.3-2.3 2.3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path>
@@ -27,15 +28,20 @@
         </svg>
         <span>kubectl-triage</span>
       </a>
-      <nav class="site-nav" aria-label="主导航">
-        <a href="#quickstart">快速开始</a>
-        <a href="#install">安装</a>
-        <a href="#security">安全</a>
-        <a href="#eval">评测</a>
-        <a href="#docs">文档</a>
-        <a href="project.html">项目文档</a>
-        <a href="#pilot">试点</a>
+      <nav class="site-nav" aria-label="Main navigation">
+        <a href="#quickstart">Quickstart</a>
+        <a href="#install">Install</a>
+        <a href="#security">Security</a>
+        <a href="#eval">Evaluation</a>
+        <a href="#docs">Docs</a>
+        <a href="project.html">Project</a>
+        <a href="#pilot">Pilot</a>
         <a class="nav-github" href="https://github.com/paas-ops/kubectl-triage">GitHub</a>
+        <span class="lang-switch" aria-label="Language">
+          <span aria-current="true">English</span>
+          <span aria-hidden="true">|</span>
+          <a href="index-zh.html" hreflang="zh-CN" lang="zh-CN">简体中文</a>
+        </span>
       </nav>
     </div>
   </header>
@@ -44,25 +50,26 @@
     <!-- Hero -->
     <section id="top" class="hero">
       <div class="container hero-inner">
-        <p class="eyebrow"><span class="dot" aria-hidden="true"></span> M5 · v1.0 准备 · Apache-2.0 · 离线优先</p>
-        <h1>把一次历史故障，变成<br class="hero-break">可复现、可追溯、可评审的<em>本地</em>诊断报告。</h1>
+        <p class="eyebrow"><span class="dot" aria-hidden="true"></span> M5 · v1.0 preparation · Apache-2.0 · Offline-first</p>
+        <h1>Turn a past incident into a<br class="hero-break"> reproducible, traceable and reviewable <em>local</em> diagnosis report.</h1>
         <p class="lead">
-          <strong>kubectl-triage</strong> 是一个离线优先的 Kubernetes 事故诊断 CLI。
-          给一份脱敏的事故证据包，一条命令得到带证据引用、反证与缺失说明的
-          Markdown + JSON 报告——不接控制平面，不上传证据。
-          企业桥只提供 <code>push</code> 客户端与公开协议 1.0：显式配置端点/令牌，
-          默认只发报告与证据哈希。
+          <strong>kubectl-triage</strong> is an offline-first Kubernetes incident triage CLI.
+          Give it a redacted incident bundle and one command produces a Markdown + JSON report
+          with evidence citations, contradictions and missing-evidence notes — no control plane,
+          no evidence upload. The enterprise bridge ships only a <code>push</code> client and the
+          public protocol 1.0: explicitly configured endpoint and token, sending the report and
+          evidence hashes by default.
         </p>
         <div class="hero-actions">
-          <a class="btn btn-primary" href="#quickstart">5 分钟上手</a>
-          <a class="btn btn-secondary" href="#install">查看安装矩阵</a>
-          <a class="btn btn-ghost" href="https://github.com/paas-ops/kubectl-triage">源码仓库 <span aria-hidden="true">↗</span></a>
+          <a class="btn btn-primary" href="#quickstart">5-minute quickstart</a>
+          <a class="btn btn-secondary" href="#install">View install matrix</a>
+          <a class="btn btn-ghost" href="https://github.com/paas-ops/kubectl-triage">Source repository <span aria-hidden="true">↗</span></a>
         </div>
-        <ul class="hero-facts" aria-label="核心特性">
-          <li><strong>默认零网络</strong><span>不传 --model 就不发任何请求</span></li>
-          <li><strong>只读</strong><span>不调集群写接口，不 exec，不读 Secret</span></li>
-          <li><strong>12 个 golden</strong><span>确定性规则回归，输出可快照</span></li>
-          <li><strong>单二进制</strong><span>macOS / Linux / Windows · amd64 + arm64</span></li>
+        <ul class="hero-facts" aria-label="Core properties">
+          <li><strong>Zero network by default</strong><span>No <code>--model</code> means no requests at all</span></li>
+          <li><strong>Read-only</strong><span>No cluster writes, no exec, no Secret reads</span></li>
+          <li><strong>12 golden cases</strong><span>Deterministic rule regression, snapshot-friendly</span></li>
+          <li><strong>Single binary</strong><span>macOS / Linux / Windows · amd64 + arm64</span></li>
         </ul>
       </div>
     </section>
@@ -71,70 +78,70 @@
     <section id="quickstart" class="section">
       <div class="container">
         <header class="section-head">
-          <p class="kicker">5 分钟快速开始</p>
-          <h2>从零到一份可评审的报告</h2>
-          <p class="section-lead">安装、生成示例事故包、校验、分析、读报告。全程本地，不需要集群账号。</p>
+          <p class="kicker">5-minute quickstart</p>
+          <h2>From zero to a reviewable report</h2>
+          <p class="section-lead">Install, create a sample incident bundle, validate, analyze, read the report. Everything stays local; no cluster account required.</p>
         </header>
 
         <ol class="steps">
           <li class="step">
             <span class="step-num" aria-hidden="true">1</span>
             <div class="step-body">
-              <h3>安装 CLI</h3>
+              <h3>Install the CLI</h3>
               <pre><code>go install github.com/paas-ops/kubectl-triage/cmd/kubectl-triage@latest
 kubectl-triage version</code></pre>
-              <p class="step-note">需要 Go 1.24+。预编译二进制、Docker、Homebrew 见<a href="#install">安装矩阵</a>。</p>
+              <p class="step-note">Requires Go 1.24+. Prebuilt binaries, Docker and Homebrew: see the <a href="#install">install matrix</a>.</p>
             </div>
           </li>
           <li class="step">
             <span class="step-num" aria-hidden="true">2</span>
             <div class="step-body">
-              <h3>生成示例事故包</h3>
+              <h3>Create a sample incident bundle</h3>
               <pre><code>kubectl-triage init /tmp/triage-demo</code></pre>
-              <p class="step-note">生成 <code>incident.yaml</code>、<code>k8s/events.json</code>、<code>logs/app.log</code>、<code>metrics/memory.json</code>。</p>
+              <p class="step-note">Creates <code>incident.yaml</code>, <code>k8s/events.json</code>, <code>logs/app.log</code> and <code>metrics/memory.json</code>.</p>
             </div>
           </li>
           <li class="step">
             <span class="step-num" aria-hidden="true">3</span>
             <div class="step-body">
-              <h3>校验事故包</h3>
+              <h3>Validate the bundle</h3>
               <pre><code>kubectl-triage validate /tmp/triage-demo</code></pre>
-              <p class="step-note">JSON Schema、RFC3339 时间戳与敏感内容扫描；命中凭据类内容默认退出码 4。</p>
+              <p class="step-note">JSON Schema, RFC3339 timestamps and sensitive-content scanning; credential-like content exits with code 4 by default.</p>
             </div>
           </li>
           <li class="step">
             <span class="step-num" aria-hidden="true">4</span>
             <div class="step-body">
-              <h3>本地诊断</h3>
+              <h3>Analyze locally</h3>
               <pre><code>kubectl-triage analyze /tmp/triage-demo</code></pre>
-              <p class="step-note">默认离线规则，30 秒内出结果；报告写入包内 <code>report.md</code> / <code>report.json</code>。</p>
+              <p class="step-note">Deterministic offline rules, done in under 30 seconds; writes <code>report.md</code> / <code>report.json</code> into the bundle.</p>
             </div>
           </li>
           <li class="step">
             <span class="step-num" aria-hidden="true">5</span>
             <div class="step-body">
-              <h3>读报告</h3>
-              <p class="step-note"><code>report.md</code>：摘要 → 证据时间线 → 候选根因（含反证与置信）→ 缺失证据 → 只读修复建议。<code>report.json</code> 接入工单 / 知识库。</p>
+              <h3>Read the report</h3>
+              <p class="step-note"><code>report.md</code>: summary → evidence timeline → candidate root causes (with contradictions and confidence) → missing evidence → read-only remediation advice. Plug <code>report.json</code> into your ticketing or knowledge base.</p>
             </div>
           </li>
         </ol>
 
         <div class="callout-grid">
           <div class="callout">
-            <h3>也可以作为 kubectl 插件</h3>
+            <h3>Use it as a kubectl plugin</h3>
             <pre><code>kubectl triage analyze /tmp/triage-demo</code></pre>
-            <p>二进制名为 <code>kubectl-triage</code>（Windows 为 <code>kubectl-triage.exe</code>）且在 <code>PATH</code> 中时，kubectl 会自动发现它。</p>
+            <p>When a binary named <code>kubectl-triage</code> (<code>kubectl-triage.exe</code> on Windows) is on <code>PATH</code>, kubectl discovers it automatically.</p>
           </div>
           <div class="callout">
-            <h3>稳定退出码（CI 可用）</h3>
+            <h3>Stable exit codes (CI-friendly)</h3>
             <table class="mini-table">
-              <caption class="visually-hidden">analyze 退出码</caption>
+              <caption class="visually-hidden">analyze exit codes</caption>
               <tbody>
-                <tr><th scope="row">0</th><td>成功，报告已生成</td></tr>
-                <tr><th scope="row">1</th><td>输入 / 配置错误</td></tr>
-                <tr><th scope="row">2</th><td><code>--fail-on-missing</code> 触发</td></tr>
-                <tr><th scope="row">3</th><td>模型失败，已降级离线（报告 <code>degraded: true</code>）</td></tr>
-                <tr><th scope="row">4</th><td>安全校验失败（疑似 Secret / 越权数据）</td></tr>
+                <tr><th scope="row">0</th><td>Success, report written</td></tr>
+                <tr><th scope="row">1</th><td>Input / configuration error</td></tr>
+                <tr><th scope="row">2</th><td><code>--fail-on-missing</code> triggered</td></tr>
+                <tr><th scope="row">3</th><td>Model failure, degraded to offline rules (report has <code>degraded: true</code>)</td></tr>
+                <tr><th scope="row">4</th><td>Security validation failed (suspected Secret / unauthorized data)</td></tr>
               </tbody>
             </table>
           </div>
@@ -146,62 +153,63 @@ kubectl-triage version</code></pre>
     <section id="install" class="section section-alt">
       <div class="container">
         <header class="section-head">
-          <p class="kicker">安装矩阵</p>
-          <h2>选一条最短的安装路径</h2>
-          <p class="section-lead">所有归档（含 Windows zip）都提供 sha256 校验、cosign keyless 签名与 CycloneDX SBOM。</p>
+          <p class="kicker">Install matrix</p>
+          <h2>Pick the shortest install path</h2>
+          <p class="section-lead">Every archive (including the Windows zip) ships sha256 checksums, a cosign keyless signature and a CycloneDX SBOM.</p>
         </header>
 
         <div class="table-wrap">
           <table class="matrix">
-            <caption class="visually-hidden">kubectl-triage 安装方式</caption>
+            <caption class="visually-hidden">kubectl-triage install options</caption>
             <thead>
               <tr>
-                <th scope="col">方式</th>
-                <th scope="col">命令 / 产物</th>
-                <th scope="col">状态</th>
+                <th scope="col">Method</th>
+                <th scope="col">Command / artifact</th>
+                <th scope="col">Status</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <th scope="row">源码（Go 1.24+）</th>
+                <th scope="row">Source (Go 1.24+)</th>
                 <td><code>go install github.com/paas-ops/kubectl-triage/cmd/kubectl-triage@latest</code></td>
-                <td><span class="tag tag-ok">现在可用</span></td>
+                <td><span class="tag tag-ok">Available now</span></td>
               </tr>
               <tr>
-                <th scope="row">Release 二进制</th>
+                <th scope="row">Release binaries</th>
                 <td><code>kubectl-triage_&lt;version&gt;_&lt;os&gt;_&lt;arch&gt;.tar.gz</code> · darwin/linux × amd64/arm64</td>
-                <td><span class="tag tag-ok">v0.3.0 起</span></td>
+                <td><span class="tag tag-ok">Since v0.3.0</span></td>
               </tr>
               <tr>
-                <th scope="row">Windows（amd64）</th>
-                <td><code>kubectl-triage_&lt;version&gt;_windows_amd64.zip</code> · 解压后 <code>kubectl-triage.exe</code>，可放入 PATH 作 kubectl 插件</td>
-                <td><span class="tag tag-ok">v0.5.0 起</span></td>
+                <th scope="row">Windows (amd64)</th>
+                <td><code>kubectl-triage_&lt;version&gt;_windows_amd64.zip</code> · extract <code>kubectl-triage.exe</code>; add it to <code>PATH</code> to use it as a kubectl plugin</td>
+                <td><span class="tag tag-ok">Since v0.5.0</span></td>
               </tr>
               <tr>
                 <th scope="row">Docker / GHCR</th>
                 <td><code>docker run --rm ghcr.io/paas-ops/kubectl-triage:v0.3.0 version</code></td>
-                <td><span class="tag tag-ok">v0.3.0 起</span></td>
+                <td><span class="tag tag-ok">Since v0.3.0</span></td>
               </tr>
               <tr>
                 <th scope="row">Homebrew</th>
                 <td><code>brew tap paas-ops/homebrew-tap &amp;&amp; brew install kubectl-triage</code></td>
-                <td><span class="tag tag-ok">v0.3.0 起</span></td>
+                <td><span class="tag tag-ok">Since v0.3.0</span></td>
               </tr>
             </tbody>
           </table>
         </div>
 
         <div class="note-row">
-          <p><strong>校验供应链：</strong>下载 <code>checksums.txt</code> 后先做 sha256 校验，再用
-          <code>cosign verify-blob</code> 验证 keyless 签名；每个归档（含 Windows zip）都提供同名
-          CycloneDX SBOM（<code>*.cdx.json</code>）。</p>
-          <p><strong>Homebrew tap 已建立：</strong><code>brew tap paas-ops/homebrew-tap</code> 后安装；
-          formula 随新版本自动同步，同时作为 Release 资产发布（<code>kubectl-triage.rb</code>），详细步骤见文档。</p>
+          <p><strong>Verify the supply chain:</strong> after downloading <code>checksums.txt</code>, check sha256 first, then
+          verify the keyless signature with <code>cosign verify-blob</code>; every archive (including the Windows zip)
+          has a matching CycloneDX SBOM (<code>*.cdx.json</code>).</p>
+          <p><strong>Homebrew tap is available:</strong> install with <code>brew tap paas-ops/homebrew-tap</code>;
+          the formula syncs automatically with new releases and is also published as a Release asset
+          (<code>kubectl-triage.rb</code>). See the docs for details.</p>
         </div>
 
         <div class="link-row">
-          <a class="text-link" href="https://github.com/paas-ops/kubectl-triage/blob/main/docs/install.md">安装与校验步骤（docs/install.md）<span aria-hidden="true">→</span></a>
-          <a class="text-link" href="https://github.com/paas-ops/kubectl-triage/blob/main/docs/homebrew.md">Homebrew 安装与更新（docs/homebrew.md）<span aria-hidden="true">→</span></a>
+          <a class="text-link" href="https://github.com/paas-ops/kubectl-triage/blob/main/docs/install.md">Install and verify (docs/install.md) <span aria-hidden="true">→</span></a>
+          <a class="text-link" href="https://github.com/paas-ops/kubectl-triage/blob/main/docs/homebrew.md">Homebrew install and upgrade (docs/homebrew.md) <span aria-hidden="true">→</span></a>
         </div>
       </div>
     </section>
@@ -210,45 +218,45 @@ kubectl-triage version</code></pre>
     <section id="security" class="section">
       <div class="container">
         <header class="section-head">
-          <p class="kicker">离线与安全</p>
-          <h2>默认不联网，只读，模型与 push opt-in</h2>
-          <p class="section-lead">安全 / 合规评审可以把这份边界当作验收清单；数据流与权限清单见文档。</p>
+          <p class="kicker">Offline &amp; security</p>
+          <h2>Offline by default, read-only, model and push opt-in</h2>
+          <p class="section-lead">Security and compliance reviews can use this boundary as a checklist; data flow and permission inventory are in the docs.</p>
         </header>
 
         <div class="cards cards-4">
           <article class="card">
-            <h3>默认零网络</h3>
-            <p>不传 <code>--model</code> 时不发起任何网络请求；<code>--offline</code> 是硬保证，与模型模式互斥。</p>
+            <h3>Zero network by default</h3>
+            <p>Without <code>--model</code> the CLI makes no network requests; <code>--offline</code> is a hard guarantee and is mutually exclusive with model mode.</p>
           </article>
           <article class="card">
-            <h3>只读</h3>
-            <p>不调用 Kubernetes 写接口，不 <code>exec / apply / delete</code>，不读取 Secret；只消费本地事故包，报告只写本地。</p>
+            <h3>Read-only</h3>
+            <p>No Kubernetes write APIs, no <code>exec / apply / delete</code>, no Secret reads; it only consumes the local incident bundle and writes reports locally.</p>
           </article>
           <article class="card">
-            <h3>模型 / push opt-in</h3>
-            <p>模型与 enterprise push 都需显式启用：模型只访问 <code>--model-url</code>；push 只访问 <code>--endpoint</code>，默认只发报告与证据哈希。两者都禁用重定向。</p>
+            <h3>Model / push opt-in</h3>
+            <p>Both model and enterprise push require explicit opt-in: the model only reaches <code>--model-url</code>; push only reaches <code>--endpoint</code> and sends the report plus evidence hashes by default. Both disable redirects.</p>
           </article>
           <article class="card">
-            <h3>遥测默认关闭</h3>
-            <p>不发送任何数据。启用后只上报白名单字段（版本 / OS / 架构 / 故障类目 / 耗时等），绝不采集事故内容。</p>
+            <h3>Telemetry off by default</h3>
+            <p>Nothing is sent. When enabled, only whitelisted fields are reported (version / OS / arch / fault class / duration, etc.); incident content is never collected.</p>
           </article>
         </div>
 
         <figure class="flow" aria-labelledby="flow-caption">
-          <figcaption id="flow-caption">数据流（默认路径）</figcaption>
-          <pre><code>本地事故包（已脱敏）
-      │  validate：schema / 时间戳 / 敏感内容扫描
+          <figcaption id="flow-caption">Data flow (default path)</figcaption>
+          <pre><code>Local incident bundle (redacted)
+      │  validate: schema / timestamps / sensitive-content scan
       ▼
-  analyze：确定性离线规则
+  analyze: deterministic offline rules
       │
-      ├──► report.md  ── 人读：证据时间线、候选根因、反证、缺失项
-      └──► report.json ─ 机器读：schema 稳定契约
+      ├──► report.md  ── for humans: evidence timeline, candidate root causes, contradictions, missing items
+      └──► report.json ─ for machines: stable schema contract
 
-可选路径   --model <provider>：只访问 --model-url 配置的端点
-遥测路径   默认关闭；启用后仅白名单字段 → KUBECTL_TRIAGE_TELEMETRY_URL（未配置即丢弃）
-企业推送   可选 push：显式 --endpoint + KUBECTL_TRIAGE_ENTERPRISE_TOKEN；默认只发报告与
-           证据哈希，--include-evidence 才发脱敏证据包（协议 1.0）</code></pre>
-          <p class="flow-note">完整威胁模型、权限清单与遥测字段白名单：<a href="https://github.com/paas-ops/kubectl-triage/blob/main/docs/security.md">docs/security.md</a>。</p>
+Optional path   --model <provider>: only the endpoint configured by --model-url
+Telemetry path  off by default; when enabled, only whitelisted fields → KUBECTL_TRIAGE_TELEMETRY_URL (dropped if unset)
+Enterprise push Optional push: explicit --endpoint + KUBECTL_TRIAGE_ENTERPRISE_TOKEN; sends the report and
+                evidence hashes by default, --include-evidence adds the redacted evidence bundle (protocol 1.0)</code></pre>
+          <p class="flow-note">Full threat model, permission inventory and telemetry field whitelist: <a href="https://github.com/paas-ops/kubectl-triage/blob/main/docs/security.md">docs/security.md</a>.</p>
         </figure>
       </div>
     </section>
@@ -257,37 +265,36 @@ kubectl-triage version</code></pre>
     <section id="eval" class="section section-alt">
       <div class="container">
         <header class="section-head">
-          <p class="kicker">本地 eval</p>
-          <h2>把诊断质量变成可回归的数字</h2>
-          <p class="section-lead">对 golden 事故包做确定性评测；模型模式可对比不同 provider / 模型。</p>
+          <p class="kicker">Local evaluation</p>
+          <h2>Turn diagnosis quality into a regression number</h2>
+          <p class="section-lead">Deterministic evaluation over golden incident bundles; model mode can compare providers and models.</p>
         </header>
 
         <div class="eval-layout">
           <div class="eval-code">
-            <pre><code># 复现仓库内 12 个 golden（固定时钟保证确定性）
+            <pre><code># Reproduce the 12 golden cases in the repo (fixed clock for determinism)
 kubectl-triage eval testdata/golden --now 2026-10-30T14:00:00Z
 
-# 机器可读结果（稳定 JSON 契约，CI 用）
+# Machine-readable result (stable JSON contract, for CI)
 kubectl-triage eval testdata/golden --now 2026-10-30T14:00:00Z --json
 
-# 对同一组用例评测模型模式
-kubectl-triage eval testdata/golden --now 2026-10-30T14:00:00Z \
-  --model ollama --model-name llama3.1</code></pre>
+# Evaluate model mode over the same set
+kubectl-triage eval testdata/golden --now 2026-10-30T14:00:00Z   --model ollama --model-name llama3.1</code></pre>
           </div>
           <div class="eval-side">
-            <h3>评分项</h3>
-            <ul class="chips" aria-label="评分项">
+            <h3>Scoring signals</h3>
+            <ul class="chips" aria-label="Scoring signals">
               <li>Top1</li>
               <li>Top3</li>
-              <li>缺失处理</li>
-              <li>注入安全</li>
-              <li>降级计数</li>
-              <li>错误计数</li>
+              <li>Missing handling</li>
+              <li>Injection safety</li>
+              <li>Degraded count</li>
+              <li>Error count</li>
             </ul>
-            <h3>退出码</h3>
-            <p class="eval-exits"><code>0</code> 全通过 · <code>1</code> 输入/配置错误 · <code>2</code> 存在不通过用例</p>
-            <p class="muted">离线规则 12/12 是确定性回归，不是统计准确率；正式 100 例盲测作为企业版 / 发布门槛另行管理。</p>
-            <a class="text-link" href="https://github.com/paas-ops/kubectl-triage/blob/main/docs/eval.md">eval 用法与 JSON 契约（docs/eval.md）<span aria-hidden="true">→</span></a>
+            <h3>Exit codes</h3>
+            <p class="eval-exits"><code>0</code> all pass · <code>1</code> input/config error · <code>2</code> failing cases</p>
+            <p class="muted">The offline rules&rsquo; 12/12 is a deterministic regression, not statistical accuracy; the formal 100-case blind set is managed separately as an enterprise / release gate.</p>
+            <a class="text-link" href="https://github.com/paas-ops/kubectl-triage/blob/main/docs/eval.md">eval usage and JSON contract (docs/eval.md) <span aria-hidden="true">→</span></a>
           </div>
         </div>
       </div>
@@ -297,76 +304,76 @@ kubectl-triage eval testdata/golden --now 2026-10-30T14:00:00Z \
     <section id="docs" class="section">
       <div class="container">
         <header class="section-head">
-          <p class="kicker">文档</p>
-          <h2>仓库内 Markdown 是事实源</h2>
-          <p class="section-lead">站点只做入口与摘要；安装口径、参数、安全边界以仓库文档为准。</p>
+          <p class="kicker">Documents</p>
+          <h2>Repository Markdown is the source of truth</h2>
+          <p class="section-lead">This site is only an index and summary; install details, flags and security boundaries live in the repository documents.</p>
         </header>
 
         <div class="docs-grid">
           <a class="doc-card" href="project.html">
-            <span class="doc-tag">总览</span>
-            <h3>项目文档（全量）</h3>
-            <p>定位、架构、数据契约、命令、安全、质量、里程碑与路线图；由 docs/PROJECT.md 生成。</p>
+            <span class="doc-tag">Overview</span>
+            <h3>Project documentation (full)</h3>
+            <p>Positioning, architecture, data contracts, commands, security, quality, milestones and roadmap; generated from docs/PROJECT.md.</p>
           </a>
           <a class="doc-card" href="https://github.com/paas-ops/kubectl-triage/blob/main/docs/quickstart.md">
-            <span class="doc-tag">入门</span>
-            <h3>5 分钟快速开始</h3>
-            <p>安装、init、validate、analyze、读报告、退出码与常见问题。</p>
+            <span class="doc-tag">Getting started</span>
+            <h3>5-minute quickstart</h3>
+            <p>Install, init, validate, analyze, read the report, exit codes and FAQ.</p>
           </a>
           <a class="doc-card" href="https://github.com/paas-ops/kubectl-triage/blob/main/docs/install.md">
-            <span class="doc-tag">分发</span>
-            <h3>安装与校验</h3>
-            <p>Release 资产、sha256 / cosign / SBOM 校验、Docker、go install、Homebrew。</p>
+            <span class="doc-tag">Distribution</span>
+            <h3>Install and verify</h3>
+            <p>Release assets, sha256 / cosign / SBOM verification, Docker, go install, Homebrew.</p>
           </a>
           <a class="doc-card" href="https://github.com/paas-ops/kubectl-triage/blob/main/docs/homebrew.md">
-            <span class="doc-tag">分发</span>
+            <span class="doc-tag">Distribution</span>
             <h3>Homebrew</h3>
-            <p>tap 安装、formula 手工同步、HOMEBREW_TAP_GITHUB_TOKEN 与后续启用。</p>
+            <p>Tap install, formula manual sync, HOMEBREW_TAP_GITHUB_TOKEN and later enablement.</p>
           </a>
           <a class="doc-card" href="https://github.com/paas-ops/kubectl-triage/blob/main/docs/security.md">
-            <span class="doc-tag">安全</span>
-            <h3>安全与数据流</h3>
-            <p>只读边界、网络边界、遥测隐私、字段白名单、权限清单、漏洞上报。</p>
+            <span class="doc-tag">Security</span>
+            <h3>Security &amp; data flow</h3>
+            <p>Read-only boundary, network boundary, telemetry privacy, field whitelist, permissions, vulnerability reporting.</p>
           </a>
           <a class="doc-card" href="https://github.com/paas-ops/kubectl-triage/blob/main/docs/model.md">
-            <span class="doc-tag">可选</span>
-            <h3>模型模式</h3>
-            <p>Ollama / OpenAI-compatible 配置、预算、超时、降级与安全边界。</p>
+            <span class="doc-tag">Optional</span>
+            <h3>Model mode</h3>
+            <p>Ollama / OpenAI-compatible configuration, budget, timeout, degradation and security boundaries.</p>
           </a>
           <a class="doc-card" href="https://github.com/paas-ops/kubectl-triage/blob/main/docs/eval.md">
-            <span class="doc-tag">质量</span>
-            <h3>本地评测</h3>
-            <p>eval 用法、评分口径、稳定 JSON 契约与 CI 示例。</p>
+            <span class="doc-tag">Quality</span>
+            <h3>Local evaluation</h3>
+            <p>eval usage, scoring, stable JSON contract and CI examples.</p>
           </a>
           <a class="doc-card" href="https://github.com/paas-ops/kubectl-triage/blob/main/docs/pilot.md">
-            <span class="doc-tag">企业</span>
-            <h3>企业试点指南</h3>
-            <p>试点资格、28 天流程、验收口径与申请方式。</p>
+            <span class="doc-tag">Enterprise</span>
+            <h3>Enterprise pilot guide</h3>
+            <p>Pilot eligibility, 28-day process, acceptance criteria and how to apply.</p>
           </a>
           <a class="doc-card" href="https://github.com/paas-ops/kubectl-triage/blob/main/docs/pilot-playbook.md">
-            <span class="doc-tag">运营</span>
-            <h3>28 天试点 playbook</h3>
-            <p>时间线、验收口径、数据边界与复盘模板；客户与维护者共用。</p>
+            <span class="doc-tag">Operations</span>
+            <h3>28-day pilot playbook</h3>
+            <p>Timeline, acceptance criteria, data boundary and retrospective template; shared by customers and maintainers.</p>
           </a>
           <a class="doc-card" href="https://github.com/paas-ops/kubectl-triage/blob/main/docs/push-protocol.md">
-            <span class="doc-tag">企业</span>
-            <h3>Push 协议 1.0</h3>
-            <p>端点/幂等/重试/证据包/错误码；企业控制平面服务端实现者的公开契约。</p>
+            <span class="doc-tag">Enterprise</span>
+            <h3>Push protocol 1.0</h3>
+            <p>Endpoints, idempotency, retries, evidence bundle, error codes; the public contract for enterprise control-plane implementers.</p>
           </a>
           <a class="doc-card" href="https://github.com/paas-ops/kubectl-triage/blob/main/docs/enterprise.md">
-            <span class="doc-tag">企业</span>
-            <h3>开源版 vs 企业版</h3>
-            <p>OSS 与企业版能力边界；G2–G5 企业能力不在本仓库。</p>
+            <span class="doc-tag">Enterprise</span>
+            <h3>OSS vs Enterprise</h3>
+            <p>Capability boundary between OSS and the enterprise edition; G2–G5 enterprise features are not in this repository.</p>
           </a>
           <a class="doc-card" href="https://github.com/paas-ops/kubectl-triage/blob/main/docs/metrics.md">
-            <span class="doc-tag">运营</span>
-            <h3>指标漏斗与周报</h3>
-            <p>安装→激活→重复→试点口径、周报模板与反虚荣指标。</p>
+            <span class="doc-tag">Operations</span>
+            <h3>Metrics funnel &amp; weekly report</h3>
+            <p>Install → activation → repeat → pilot definitions, weekly-report template and anti-vanity metrics.</p>
           </a>
           <a class="doc-card" href="https://github.com/paas-ops/kubectl-triage/blob/main/docs/adr/ADR-005-M3%E5%AE%9E%E7%8E%B0%E5%8F%A3%E5%BE%84.md">
-            <span class="doc-tag">契约</span>
-            <h3>ADR-005：M3 实现口径</h3>
-            <p>发布产物、签名 / SBOM、Docker / Homebrew、文档站、遥测口径。</p>
+            <span class="doc-tag">Contract</span>
+            <h3>ADR-005: M3 implementation contract</h3>
+            <p>Release artifacts, signing / SBOM, Docker / Homebrew, docs site and telemetry contract.</p>
           </a>
         </div>
       </div>
@@ -376,27 +383,28 @@ kubectl-triage eval testdata/golden --now 2026-10-30T14:00:00Z \
     <section id="pilot" class="section section-pilot">
       <div class="container pilot-inner">
         <div class="pilot-copy">
-          <p class="kicker">企业试点</p>
-          <h2>用你脱敏的历史事故检验它</h2>
+          <p class="kicker">Enterprise pilot</p>
+          <h2>Test it with your own redacted incidents</h2>
           <p>
-            开源 CLI 永远可以完成一次完整诊断，不限次数；试点面向<strong>团队化能力</strong>：
-            团队事故库、评测集管理、审计与私有化部署。提交申请后用 28 天一起验证真实事故上的可用性。
+            The open-source CLI can always complete a full diagnosis, with no usage limits; the pilot focuses on
+            <strong>team capabilities</strong>: a team incident library, evaluation set management, audit and private
+            deployment. Apply, then spend 28 days validating it on real incidents.
           </p>
           <ul class="checklist">
-            <li>团队 ≥2 名 SRE / 平台工程师，≥3 个集群</li>
-            <li>有 Prometheus / Alertmanager，能提供 ≥10 起脱敏历史事故</li>
-            <li>有团队事故库 / 审计 / 私有部署需求之一</li>
-            <li>接受 28 天试点与验收口径</li>
+            <li>Team of ≥2 SREs / platform engineers, ≥3 clusters</li>
+            <li>Prometheus / Alertmanager available and ≥10 redacted historical incidents</li>
+            <li>A need for a team incident library, audit or private deployment</li>
+            <li>Acceptance of the 28-day pilot and its acceptance criteria</li>
           </ul>
-          <p class="muted">企业桥（push）：OSS 只提供客户端与公开协议 1.0，接收端与团队化能力由商业版提供。
-          <a href="https://github.com/paas-ops/kubectl-triage/blob/main/docs/push-protocol.md">Push 协议</a> ·
-          <a href="https://github.com/paas-ops/kubectl-triage/blob/main/docs/enterprise.md">开源版与企业版</a></p>
+          <p class="muted">Enterprise bridge (push): OSS ships only the client and public protocol 1.0; the receiving side and team capabilities come from the commercial edition.
+          <a href="https://github.com/paas-ops/kubectl-triage/blob/main/docs/push-protocol.md">Push protocol</a> ·
+          <a href="https://github.com/paas-ops/kubectl-triage/blob/main/docs/enterprise.md">OSS vs Enterprise</a></p>
         </div>
         <div class="pilot-cta">
-          <a class="btn btn-primary btn-block" href="https://github.com/paas-ops/kubectl-triage/issues/new?template=pilot-request.yml">提交试点申请</a>
-          <a class="btn btn-secondary btn-block" href="https://github.com/paas-ops/kubectl-triage/blob/main/docs/pilot.md">阅读试点指南</a>
-          <a class="btn btn-secondary btn-block" href="https://github.com/paas-ops/kubectl-triage/blob/main/docs/pilot-playbook.md">28 天试点运营手册</a>
-          <p class="muted">申请通过 GitHub Issue 表单提交；我们会在 3 个工作日内回复。</p>
+          <a class="btn btn-primary btn-block" href="https://github.com/paas-ops/kubectl-triage/issues/new?template=pilot-request.yml">Submit pilot request</a>
+          <a class="btn btn-secondary btn-block" href="https://github.com/paas-ops/kubectl-triage/blob/main/docs/pilot.md">Read the pilot guide</a>
+          <a class="btn btn-secondary btn-block" href="https://github.com/paas-ops/kubectl-triage/blob/main/docs/pilot-playbook.md">28-day pilot operations playbook</a>
+          <p class="muted">Applications go through the GitHub Issue form; we reply within 3 business days.</p>
         </div>
       </div>
     </section>
@@ -406,18 +414,18 @@ kubectl-triage eval testdata/golden --now 2026-10-30T14:00:00Z \
     <div class="container footer-inner">
       <div class="footer-brand">
         <strong>kubectl-triage</strong>
-        <span>Apache-2.0 · 当前 M5（v1.0 准备）</span>
+        <span>Apache-2.0 · Current M5 (v1.0 preparation)</span>
       </div>
-      <nav class="footer-nav" aria-label="页脚导航">
-        <a href="project.html">项目文档</a>
+      <nav class="footer-nav" aria-label="Footer navigation">
+        <a href="project.html">Project documentation</a>
         <a href="https://github.com/paas-ops/kubectl-triage">GitHub</a>
-        <a href="https://github.com/paas-ops/kubectl-triage/blob/main/SECURITY.md">安全策略</a>
-        <a href="https://github.com/paas-ops/kubectl-triage/blob/main/docs/enterprise.md">开源版 vs 企业版</a>
-        <a href="https://github.com/paas-ops/kubectl-triage/blob/main/docs/push-protocol.md">Push 协议</a>
+        <a href="https://github.com/paas-ops/kubectl-triage/blob/main/SECURITY.md">Security policy</a>
+        <a href="https://github.com/paas-ops/kubectl-triage/blob/main/docs/enterprise.md">OSS vs Enterprise</a>
+        <a href="https://github.com/paas-ops/kubectl-triage/blob/main/docs/push-protocol.md">Push protocol</a>
         <a href="https://github.com/paas-ops/kubectl-triage/blob/main/CHANGELOG.md">Changelog</a>
-        <a href="https://github.com/paas-ops/kubectl-triage/blob/main/docs/%E9%9C%80%E6%B1%82%E6%96%87%E6%A1%A3.md">需求文档</a>
+        <a href="https://github.com/paas-ops/kubectl-triage/blob/main/docs/%E9%9C%80%E6%B1%82%E6%96%87%E6%A1%A3.md">Requirements doc</a>
       </nav>
-      <p class="footer-note">纯静态页面：无外部字体、脚本、CDN 或分析代码，可离线打开。</p>
+      <p class="footer-note">Pure static pages: no external fonts, scripts, CDN or analytics; works offline.</p>
     </div>
   </footer>
 </body>
