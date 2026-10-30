@@ -77,8 +77,9 @@ jobs:
         env:
           TAG: ${{ inputs.tag }}
           REPO: ${{ github.repository }}
+          REPO_OWNER: ${{ github.repository_owner }}
         run: |
           set -euo pipefail
-          cosign verify "ghcr.io/$REPO/kubectl-triage:$TAG" \
+          cosign verify "ghcr.io/$REPO_OWNER/kubectl-triage:$TAG" \
             --certificate-identity-regexp "https://github.com/$REPO/.github/workflows/release.yml@refs/tags/.*" \
             --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
