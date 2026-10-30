@@ -72,13 +72,16 @@ jobs:
         run: |
           mkdir -p dist/sbom
           shopt -s nullglob
-          archives=(dist/*.tar.gz)
+          # ADR-007 D3: Windows ships as .zip, so every archive must get an SBOM.
+          archives=(dist/*.tar.gz dist/*.zip)
           if [ "${#archives[@]}" -eq 0 ]; then
             echo "no release archives found" >&2
             exit 1
           fi
           for archive in "${archives[@]}"; do
-            name="$(basename "$archive" .tar.gz)"
+            name="$(basename "$archive")"
+            name="${name%.tar.gz}"
+            name="${name%.zip}"
             syft "$archive" -o "cyclonedx-json=dist/sbom/${name}.cdx.json"
           done
 

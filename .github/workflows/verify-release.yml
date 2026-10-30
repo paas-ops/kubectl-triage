@@ -31,7 +31,7 @@ jobs:
           mkdir -p assets
           gh release download "$TAG" -R "$REPO" -D assets \
             -p checksums.txt -p checksums.txt.sig -p checksums.txt.pem \
-            -p "*.tar.gz" -p "*.cdx.json" -p "*.rb"
+            -p "*.tar.gz" -p "*.zip" -p "*.cdx.json" -p "*.rb"
           ls -la assets
 
       - name: Verify sha256 checksums
@@ -60,8 +60,11 @@ jobs:
         run: |
           set -euo pipefail
           cd assets
-          for archive in *.tar.gz; do
-            sbom="${archive%.tar.gz}.cdx.json"
+          for archive in *.tar.gz *.zip; do
+            case "$archive" in
+              *.tar.gz) sbom="${archive%.tar.gz}.cdx.json" ;;
+              *.zip) sbom="${archive%.zip}.cdx.json" ;;
+            esac
             test -f "$sbom" || { echo "missing SBOM for $archive"; exit 1; }
           done
           echo "SBOM coverage OK"

@@ -14,9 +14,15 @@ builds:
     goos:
       - darwin
       - linux
+      - windows
     goarch:
       - amd64
       - arm64
+    # ADR-007 D3: Windows ships amd64 first. windows/arm64 does compile, but it
+    # is not a published artifact yet.
+    ignore:
+      - goos: windows
+        goarch: arm64
     flags:
       - -trimpath
     ldflags:
@@ -29,6 +35,11 @@ archives:
   - id: default
     formats:
       - tar.gz
+    # ADR-007 D3: Windows binaries ship as .zip; all other platforms keep tar.gz.
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     files:
       - README.md
