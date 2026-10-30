@@ -54,6 +54,7 @@ func NewRoot(version, commit, date string) *cobra.Command {
 		newReportCmd(),
 		newEvalCmd(),
 		newTelemetryCmd(),
+		newPushCmd(),
 	)
 	return root
 }
