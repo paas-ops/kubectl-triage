@@ -1,0 +1,257 @@
+{
+  "incident.schema.json": {
+    "type": "object",
+    "required": [
+      "alertname",
+      "cluster",
+      "collected_at",
+      "id",
+      "namespace",
+      "observed_at",
+      "severity",
+      "source",
+      "workload"
+    ],
+    "additionalProperties": false,
+    "properties": {
+      "alertname": {
+        "type": "string",
+        "minLength": 1
+      },
+      "cluster": {
+        "type": "string",
+        "minLength": 1
+      },
+      "collected_at": {
+        "type": "string",
+        "format": "date-time"
+      },
+      "id": {
+        "type": "string",
+        "minLength": 1
+      },
+      "namespace": {
+        "type": "string",
+        "minLength": 1
+      },
+      "observed_at": {
+        "type": "string",
+        "format": "date-time"
+      },
+      "severity": {
+        "enum": [
+          "critical",
+          "info",
+          "warning"
+        ]
+      },
+      "source": {
+        "type": "string",
+        "minLength": 1
+      },
+      "workload": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  },
+  "report.schema.json": {
+    "type": "object",
+    "required": [
+      "degraded",
+      "evidence",
+      "generated_at",
+      "hypotheses",
+      "incident",
+      "limitations",
+      "missing_data",
+      "mode",
+      "recommended_checks",
+      "schema_version",
+      "suggested_fix",
+      "summary",
+      "versions"
+    ],
+    "additionalProperties": false,
+    "properties": {
+      "degraded": {
+        "type": "boolean"
+      },
+      "evidence": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": [
+            "collected_at",
+            "content_ref",
+            "id",
+            "observed_at",
+            "sha256",
+            "source",
+            "stale",
+            "summary"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "collected_at": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "content_ref": {
+              "type": "string"
+            },
+            "id": {
+              "type": "string"
+            },
+            "observed_at": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "query": {
+              "type": "string"
+            },
+            "redaction": {
+              "type": "string"
+            },
+            "sha256": {
+              "type": "string"
+            },
+            "skew_seconds": {
+              "type": "integer"
+            },
+            "source": {
+              "type": "string"
+            },
+            "stale": {
+              "type": "boolean"
+            },
+            "summary": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "generated_at": {
+        "type": "string",
+        "format": "date-time"
+      },
+      "hypotheses": {
+        "type": "array",
+        "maxItems": 3,
+        "items": {
+          "type": "object",
+          "required": [
+            "confidence",
+            "contradictions",
+            "evidence_ids",
+            "rank",
+            "statement"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "confidence": {
+              "enum": [
+                "high",
+                "low",
+                "mid"
+              ]
+            },
+            "contradictions": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "evidence_id",
+                  "note"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "evidence_id": {
+                    "type": "string"
+                  },
+                  "note": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "evidence_ids": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string"
+              }
+            },
+            "rank": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "statement": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "incident": {
+        "$ref": "incident.schema.json"
+      },
+      "limitations": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "missing_data": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": [
+            "next_step",
+            "reason",
+            "source"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "next_step": {
+              "type": "string"
+            },
+            "reason": {
+              "type": "string"
+            },
+            "source": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "mode": {
+        "enum": [
+          "model",
+          "offline"
+        ]
+      },
+      "recommended_checks": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "schema_version": {
+        "type": "string",
+        "const": "1.0"
+      },
+      "suggested_fix": {
+        "type": "string"
+      },
+      "summary": {
+        "type": "string"
+      },
+      "versions": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
