@@ -1,0 +1,140 @@
+name: 企业试点申请
+description: 申请 28 天企业试点（团队事故库 / 评测 / 审计 / 私有化），需提供 ≥10 起脱敏历史事故
+title: "[pilot] "
+labels: ["pilot"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢关注 kubectl-triage 企业试点！
+
+        试点资格（详见 [docs/pilot.md](https://github.com/paas-ops/kubectl-triage/blob/main/docs/pilot.md)）：
+        - 团队 ≥2 名 SRE / 平台工程师，≥3 个集群；
+        - 有 Prometheus / Alertmanager，能提供 ≥10 起脱敏历史事故；
+        - 有团队事故库 / 审计 / 私有部署需求之一；
+        - 接受 28 天试点与验收口径。
+
+        请只填写脱敏信息，**不要在本 issue 中粘贴日志、凭据或客户数据**。我们会在 3 个工作日内回复。
+
+  - type: input
+    id: contact
+    attributes:
+      label: 联系邮箱
+      description: 用于试点沟通与访谈安排，不会公开用于营销。
+      placeholder: you@example.com
+    validations:
+      required: true
+
+  - type: input
+    id: organization
+    attributes:
+      label: 公司 / 组织
+      placeholder: 例如：某电商平台 SRE 团队
+    validations:
+      required: true
+
+  - type: dropdown
+    id: team_size
+    attributes:
+      label: 团队规模（SRE / 平台工程师）
+      description: 试点资格要求 ≥2 名。
+      options:
+        - 2–5 人
+        - 6–20 人
+        - 21+ 人
+        - 少于 2 人（暂不符合试点资格）
+    validations:
+      required: true
+
+  - type: dropdown
+    id: clusters
+    attributes:
+      label: 生产集群数
+      description: 试点资格要求 ≥3 个集群。
+      options:
+        - 3–5 个
+        - 6–20 个
+        - 21+ 个
+        - 少于 3 个（暂不符合试点资格）
+    validations:
+      required: true
+
+  - type: dropdown
+    id: incidents
+    attributes:
+      label: 可提供的脱敏历史事故数
+      description: 试点要求 ≥10 起；覆盖 2–3 类故障更有价值。
+      options:
+        - 10–30 起
+        - 31–100 起
+        - 100+ 起
+        - 少于 10 起（暂不符合试点资格）
+    validations:
+      required: true
+
+  - type: input
+    id: kubernetes
+    attributes:
+      label: Kubernetes 版本 / 发行版（可选）
+      description: 例如 v1.28–v1.30、EKS、ACK、自建。
+      placeholder: v1.28–v1.30 / EKS
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: monitoring
+    attributes:
+      label: 现有监控栈（可多选）
+      options:
+        - label: Prometheus
+        - label: Alertmanager
+        - label: Loki
+        - label: 其他（请在补充说明中注明）
+
+  - type: checkboxes
+    id: needs
+    attributes:
+      label: 需求偏好（可多选）
+      description: 试点最想验证的团队化能力。
+      options:
+        - label: 团队事故库 / 检索 / 标签 / 负责人
+        - label: 本地评测与版本对比 / 质量看板
+        - label: 审计（谁在何时看了什么、模型与版本）
+        - label: SSO / RBAC / 多租户
+        - label: 私有化 / 专有网络 / 离线部署
+        - label: 工单 / 知识库 / 告警平台集成
+    validations:
+      required: true
+
+  - type: dropdown
+    id: pilot_accept
+    attributes:
+      label: 是否接受 28 天试点与验收口径
+      options:
+        - 是
+        - 否（希望先了解更多）
+    validations:
+      required: true
+
+  - type: dropdown
+    id: source
+    attributes:
+      label: 从哪里了解到 kubectl-triage
+      description: 用于了解渠道来源，帮助改进文档与内容。
+      options:
+        - 文档站
+        - README / GitHub
+        - 评测内容
+        - 同事或社区推荐
+        - 其他
+    validations:
+      required: true
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: 补充说明（可选）
+      description: 事故场景、安全/合规要求、期望的试点时间；请勿粘贴真实日志、凭据或客户数据。
+      placeholder: 我们主要处理 OOMKilled 与发布回归，希望验证团队事故库与审计能力……
+    validations:
+      required: false
