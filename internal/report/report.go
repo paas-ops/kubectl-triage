@@ -294,8 +294,13 @@ func (r *Report) addEvidenceDetails(lines *[]string, ordered []Evidence) {
 		if e.Redaction != "" {
 			parts = append(parts, "脱敏级别："+e.Redaction)
 		}
-		if e.SkewSeconds != 0 {
-			parts = append(parts, fmt.Sprintf("时钟偏差：%ds（阈值 9s）", e.SkewSeconds))
+		// Positive skew means observed_at is later than collected_at: a clock
+		// skew worth warning about. Otherwise a long explicit collection delay is
+		// informational only (the normal case is collected_at after observed_at).
+		if e.SkewSeconds > 0 {
+			parts = append(parts, fmt.Sprintf("⚠ 时钟偏差：+%ds（观察时间晚于采集时间，阈值 9s）", e.SkewSeconds))
+		} else if delay, ok := collectionDelaySeconds(e.ObservedAt, e.CollectedAt); ok {
+			parts = append(parts, fmt.Sprintf("采集延迟：%ds", delay))
 		}
 		if e.SHA256 != "" {
 			parts = append(parts, "sha256："+e.SHA256)
@@ -312,6 +317,21 @@ func (r *Report) addEvidenceDetails(lines *[]string, ordered []Evidence) {
 	*lines = append(*lines, "")
 	*lines = append(*lines, details...)
 	*lines = append(*lines, "")
+}
+
+// collectionDelaySeconds returns collected_at - observed_at in whole seconds when
+// that delay is at least a minute (informational for the Markdown details).
+func collectionDelaySeconds(observedAt, collectedAt string) (int, bool) {
+	observed, observedErr := evidence.ParseTime(observedAt)
+	collected, collectedErr := evidence.ParseTime(collectedAt)
+	if observedErr != nil || collectedErr != nil {
+		return 0, false
+	}
+	delay := collected.Sub(observed)
+	if delay < time.Minute {
+		return 0, false
+	}
+	return int(delay / time.Second), true
 }
 
 func (r *Report) evidenceByObservedAt() []Evidence {

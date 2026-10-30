@@ -169,8 +169,10 @@ source: unit
 	if !item.Stale {
 		t.Fatalf("expected stale evidence, got %+v", item)
 	}
-	if item.SkewSeconds != 30 {
-		t.Fatalf("skew_seconds = %d, want 30", item.SkewSeconds)
+	// collected_at is 30s after the event: that is a normal collection delay, not
+	// clock skew, so skew_seconds must stay absent.
+	if item.SkewSeconds != 0 {
+		t.Fatalf("collection delay must not be clock skew: skew_seconds = %d, want 0", item.SkewSeconds)
 	}
 	if len(rep.Hypotheses) != 1 || rep.Hypotheses[0].Confidence != "low" {
 		t.Fatalf("stale-only evidence must yield a low hypothesis: %+v", rep.Hypotheses)
@@ -183,6 +185,39 @@ source: unit
 	}
 	if !hasStaleLimitation {
 		t.Fatalf("stale limitation missing: %v", rep.Limitations)
+	}
+}
+
+// TestClockSkewDerivation covers the positive clock-skew case: an event that
+// claims to have happened after the bundle was collected.
+func TestClockSkewDerivation(t *testing.T) {
+	dir := t.TempDir()
+	writeFixture(t, dir, map[string]string{
+		"incident.yaml": `id: unit-skew
+alertname: KubePodOOMKilled
+severity: critical
+cluster: prod-shanghai
+namespace: checkout
+workload: checkout-api
+observed_at: 2026-10-30T13:50:00Z
+collected_at: 2026-10-30T13:50:05Z
+source: unit
+`,
+		"k8s/events.json": `{"apiVersion":"v1","kind":"EventList","items":[{"type":"Warning","reason":"OOMKilled","message":"Container was OOMKilled (exitCode=137)","involvedObject":{"kind":"Pod","name":"checkout-api-3"},"lastTimestamp":"2026-10-30T13:50:35Z"}]}`,
+	})
+	rep, err := Analyze(loadFixture(t, dir), "dev", Options{Now: fixedNow(t, "2026-10-30T14:00:00Z")})
+	if err != nil {
+		t.Fatalf("analyze: %v", err)
+	}
+	if len(rep.Evidence) != 1 {
+		t.Fatalf("evidence = %+v", rep.Evidence)
+	}
+	item := rep.Evidence[0]
+	if item.SkewSeconds != 30 {
+		t.Fatalf("skew_seconds = %d, want 30 (observed 30s after collected)", item.SkewSeconds)
+	}
+	if item.Stale {
+		t.Fatalf("evidence should not be stale: %+v", item)
 	}
 }
 

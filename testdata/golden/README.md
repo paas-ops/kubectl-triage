@@ -24,5 +24,7 @@ baseline (五类故障 ×2 + 缺失证据包 1 + 注入包 1).
 - `expected/report.json` 中 `generated_at` 为占位值 `2000-01-01T00:00:00Z`，`versions.cli` 固定为 `dev`；测试归一化这两项后严格比对。
 - content_ref 使用冻结口径：整文件 `<rel>`、JSON 数组条目 `<rel>#items/<n>`、日志行 `<rel>#L<n>`。
 - 每条 hypothesis 的 `evidence_ids` 与 `contradictions[].evidence_id` 严格不相交：changes/ 证据只作发布回归的反证或规则激活，从不列为支持证据。
+- `stale`：观察或采集时间早于分析时刻超过 15 分钟；`skew_seconds` 只表示**正时钟偏差**（observed_at 晚于 collected_at 超过 9s，正整数），正常采集延迟（collected_at ≥ observed_at）不写该字段，Markdown 中超过 60s 的延迟显示为「采集延迟：Ns」（无 ⚠）。
+- crashloop-02 的探针事件 lastTimestamp 比 incident.collected_at 晚 30s，作为 `skew_seconds=30` 的时钟偏差正例；release-02 的 changes 记录早于采集时间，只体现采集延迟/stale，不写 skew。
 - 重新生成期望报告：`UPDATE_GOLDEN=1 GOCACHE=$PWD/.gocache go test -run TestGoldenUpdate ./internal/analyze`。生成后必须人工核对 hypothesis/置信/反证/缺失项，再跑严格模式。
 - 测试只把事故包复制到 `t.TempDir()` 分析，report 不会写回本目录。

@@ -25,7 +25,7 @@
       "content_ref": "k8s/events.json#items/0",
       "query": "kubectl get events -n checkout -o json",
       "redaction": "strict",
-      "sha256": "sha256:a18f378c4390da8ea5745f723c2ae77ce189a1d1271ecc7fe6ad041846c5dc78",
+      "sha256": "sha256:3894296a4dcbf2d579a33746ee48ebaf1c7d67f82d523451b3c15c841fa61116",
       "stale": false
     },
     {
@@ -41,18 +41,6 @@
       "stale": false
     },
     {
-      "id": "ev-002",
-      "source": "k8s.events",
-      "observed_at": "2026-10-30T13:49:58Z",
-      "collected_at": "2026-10-30T13:50:05Z",
-      "summary": "Warning Unhealthy: Liveness probe failed: Get [已移除外部链接] context deadline exceeded（Pod checkout-api-8d3c-k4m2p）",
-      "content_ref": "k8s/events.json#items/1",
-      "query": "kubectl get events -n checkout -o json",
-      "redaction": "strict",
-      "sha256": "sha256:a18f378c4390da8ea5745f723c2ae77ce189a1d1271ecc7fe6ad041846c5dc78",
-      "stale": false
-    },
-    {
       "id": "ev-003",
       "source": "k8s.pods",
       "observed_at": "2026-10-30T13:50:00Z",
@@ -63,6 +51,19 @@
       "redaction": "strict",
       "sha256": "sha256:80c33b9a0e3508f7ac6adddafdc3dd9a13294dd8a63ed9778a1d7152cc0bdfdb",
       "stale": false
+    },
+    {
+      "id": "ev-002",
+      "source": "k8s.events",
+      "observed_at": "2026-10-30T13:50:35Z",
+      "collected_at": "2026-10-30T13:50:05Z",
+      "summary": "Warning Unhealthy: Liveness probe failed: Get [已移除外部链接] context deadline exceeded（Pod checkout-api-8d3c-k4m2p）",
+      "content_ref": "k8s/events.json#items/1",
+      "query": "kubectl get events -n checkout -o json",
+      "redaction": "strict",
+      "sha256": "sha256:3894296a4dcbf2d579a33746ee48ebaf1c7d67f82d523451b3c15c841fa61116",
+      "stale": false,
+      "skew_seconds": 30
     }
   ],
   "hypotheses": [

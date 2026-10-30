@@ -78,21 +78,30 @@ func TestMarkTimingStale(t *testing.T) {
 func TestMarkTimingSkew(t *testing.T) {
 	now := time.Date(2026, 10, 30, 14, 0, 0, 0, time.UTC)
 	cases := []struct {
+		name      string
 		observed  string
 		collected string
 		want      int
 	}{
-		{"2026-10-30T13:59:00Z", "2026-10-30T13:59:05Z", 0},
-		{"2026-10-30T13:59:05Z", "2026-10-30T13:59:00Z", 0},
-		{"2026-10-30T13:59:20Z", "2026-10-30T13:59:00Z", 20},
-		{"2026-10-30T13:58:40Z", "2026-10-30T13:59:00Z", 20},
+		// Clock skew: observed_at later than collected_at beyond MaxSkew.
+		{"observed 30s later", "2026-10-30T13:59:30Z", "2026-10-30T13:59:00Z", 30},
+		{"observed 10s later", "2026-10-30T13:59:10Z", "2026-10-30T13:59:00Z", 10},
+		{"observed exactly 9s later", "2026-10-30T13:59:09Z", "2026-10-30T13:59:00Z", 0},
+		// Normal collection delay: collected_at at or after observed_at is not skew.
+		{"collected 30s later", "2026-10-30T13:59:00Z", "2026-10-30T13:59:30Z", 0},
+		{"collected 5s later", "2026-10-30T13:59:00Z", "2026-10-30T13:59:05Z", 0},
+		{"identical timestamps", "2026-10-30T13:59:00Z", "2026-10-30T13:59:00Z", 0},
+		// A long collection delay is not clock skew either.
+		{"collected 2h later", "2026-10-30T12:00:00Z", "2026-10-30T14:00:00Z", 0},
 	}
 	for _, c := range cases {
-		it := Item{ObservedAt: c.observed, CollectedAt: c.collected}
-		it.MarkTiming(now)
-		if it.SkewSeconds != c.want {
-			t.Fatalf("skew for %s/%s = %d, want %d", c.observed, c.collected, it.SkewSeconds, c.want)
-		}
+		t.Run(c.name, func(t *testing.T) {
+			it := Item{ObservedAt: c.observed, CollectedAt: c.collected}
+			it.MarkTiming(now)
+			if it.SkewSeconds != c.want {
+				t.Fatalf("skew for %s/%s = %d, want %d", c.observed, c.collected, it.SkewSeconds, c.want)
+			}
+		})
 	}
 }
 

@@ -18,7 +18,7 @@
       "involvedObject": {"kind": "Pod", "namespace": "checkout", "name": "checkout-api-8d3c-k4m2p"},
       "count": 5,
       "firstTimestamp": "2026-10-30T13:45:00Z",
-      "lastTimestamp": "2026-10-30T13:49:58Z"
+      "lastTimestamp": "2026-10-30T13:50:35Z"
     }
   ]
 }

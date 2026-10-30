@@ -157,8 +157,8 @@ func TestMarkdownTimelineStaleAndProvenance(t *testing.T) {
 		{
 			ID:          "ev-003",
 			Source:      "prometheus.metrics",
-			ObservedAt:  "2026-10-30T13:20:00Z",
-			CollectedAt: "2026-10-30T13:50:05Z",
+			ObservedAt:  "2026-10-30T14:00:05Z",
+			CollectedAt: "2026-10-30T13:30:00Z",
 			Summary:     "Prometheus 指标快照 metrics/memory.json",
 			ContentRef:  "metrics/memory.json",
 			SHA256:      "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
@@ -196,9 +196,9 @@ func TestMarkdownTimelineStaleAndProvenance(t *testing.T) {
 	}
 	md := string(data)
 	// Timeline must be ordered by observed_at, not by the JSON order.
-	first := strings.Index(md, "ev-003")
-	second := strings.Index(md, "ev-001")
-	third := strings.Index(md, "ev-002")
+	first := strings.Index(md, "ev-001")
+	second := strings.Index(md, "ev-002")
+	third := strings.Index(md, "ev-003")
 	if first < 0 || second < 0 || third < 0 || !(first < second && second < third) {
 		t.Fatalf("evidence timeline is not ordered by observed_at: %d %d %d", first, second, third)
 	}
@@ -206,7 +206,7 @@ func TestMarkdownTimelineStaleAndProvenance(t *testing.T) {
 		"⚠",
 		"k8s/events.json#items/0",
 		"logs/app.log#L1",
-		"时钟偏差：1805s",
+		"⚠ 时钟偏差：+1805s（观察时间晚于采集时间，阈值 9s）",
 		"sha256:",
 		"反证：",
 		"同期指标采样稀疏",
@@ -219,6 +219,40 @@ func TestMarkdownTimelineStaleAndProvenance(t *testing.T) {
 		if !strings.Contains(md, want) {
 			t.Fatalf("markdown missing %q: %s", want, md)
 		}
+	}
+}
+
+func TestMarkdownCollectionDelay(t *testing.T) {
+	rep := New(testIncident(), "dev")
+	rep.GeneratedAt = "2026-10-30T14:00:00Z"
+	rep.Summary = "正常采集延迟按信息性提示展示"
+	rep.Evidence = []Evidence{{
+		ID:          "ev-001",
+		Source:      "k8s.events",
+		ObservedAt:  "2026-10-30T13:40:00Z",
+		CollectedAt: "2026-10-30T13:50:00Z",
+		Summary:     "Warning OOMKilled: container terminated",
+		ContentRef:  "k8s/events.json#items/0",
+		SHA256:      "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+		Stale:       false,
+	}}
+	path := filepath.Join(t.TempDir(), "report.md")
+	if err := rep.WriteMarkdown(path); err != nil {
+		t.Fatalf("write markdown: %v", err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	md := string(data)
+	if !strings.Contains(md, "采集延迟：600s") {
+		t.Fatalf("markdown should show informational collection delay: %s", md)
+	}
+	if strings.Contains(md, "时钟偏差") {
+		t.Fatalf("collection delay must not be rendered as clock skew: %s", md)
+	}
+	if strings.Contains(md, "⚠") {
+		t.Fatalf("collection delay must not use the warning marker: %s", md)
 	}
 }
 

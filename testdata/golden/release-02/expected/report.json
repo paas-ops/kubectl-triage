@@ -26,8 +26,7 @@
       "query": "ci/cd rollout history",
       "redaction": "strict",
       "sha256": "sha256:9572d1afe5a0cc0a0230c23aa3f67cb94b8a3f44288221962eb10d0a773886d0",
-      "stale": true,
-      "skew_seconds": 2405
+      "stale": true
     },
     {
       "id": "ev-002",

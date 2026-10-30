@@ -20,8 +20,9 @@ const (
 	// StaleAfter marks evidence as stale when it is older than this value relative
 	// to the analysis reference time ("now").
 	StaleAfter = 15 * time.Minute
-	// MaxSkew is the largest tolerated difference between observed_at and
-	// collected_at before the entry is flagged with skew_seconds.
+	// MaxSkew is the largest tolerated positive clock skew: skew_seconds is set
+	// only when observed_at is later than collected_at by more than MaxSkew.
+	// Normal collection delay (collected_at at or after observed_at) is not skew.
 	MaxSkew = 9 * time.Second
 )
 
@@ -75,7 +76,10 @@ func FormatTime(t time.Time) string {
 // MarkTiming fills Stale and SkewSeconds from the item timestamps:
 //
 //   - stale when observed_at or collected_at is more than StaleAfter before now;
-//   - skew_seconds set when |observed_at - collected_at| exceeds MaxSkew.
+//   - skew_seconds is the signed observed_at minus collected_at, recorded only
+//     when observed_at is later than collected_at by more than MaxSkew (a
+//     positive clock skew). A normal collection delay (collected_at at or after
+//     observed_at) is not clock skew and leaves SkewSeconds at 0.
 //
 // Unparseable timestamps are left to Validate; MarkTiming is tolerant so that
 // the analyzer can still emit a partial report for degraded bundles.
@@ -93,9 +97,6 @@ func (it *Item) MarkTiming(now time.Time) {
 	}
 	if observedErr == nil && collectedErr == nil {
 		skew := observed.Sub(collected)
-		if skew < 0 {
-			skew = -skew
-		}
 		if skew > MaxSkew {
 			it.SkewSeconds = int(skew / time.Second)
 		}
