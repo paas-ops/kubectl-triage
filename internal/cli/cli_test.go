@@ -108,6 +108,9 @@ func TestContractFlagDefaults(t *testing.T) {
 		{"analyze", "format", "both"},
 		{"analyze", "max-evidence", "200"},
 		{"analyze", "redact", "strict"},
+		{"analyze", "model-timeout", "1m0s"},
+		{"analyze", "model-budget-usd", "1"},
+		{"analyze", "model-max-rounds", "3"},
 		{"validate", "redact", "strict"},
 		{"report", "format", "both"},
 	}
@@ -164,14 +167,22 @@ func TestAnalyzeOfflineModelConflict(t *testing.T) {
 		t.Fatal("configuration errors must not write a report")
 	}
 
-	// Per ADR-002: --model none and --offline agree semantically.
+	// Per ADR-002/ADR-004: --model none and --offline agree semantically.
 	res = run(t, "analyze", dir, "--offline", "--model", "none")
+	requireCode(t, res, 0)
+	res = run(t, "analyze", dir, "--model", "none")
 	requireCode(t, res, 0)
 }
 
-func TestAnalyzeModelFallbackExitsThree(t *testing.T) {
+func TestAnalyzeModelRuntimeFailureExitsThree(t *testing.T) {
 	dir := scaffoldDir(t)
-	res := run(t, "analyze", dir, "--model", "ollama")
+	// Valid configuration with an unreachable endpoint: this is a runtime
+	// failure, so the offline report is kept and the process exits 3 (ADR-004 D3).
+	res := run(t, "analyze", dir,
+		"--model", "ollama",
+		"--model-url", "http://127.0.0.1:1",
+		"--model-name", "llama3",
+		"--model-timeout", "500ms")
 	requireCode(t, res, 3)
 
 	jsonPath := filepath.Join(dir, "report.json")
@@ -181,18 +192,16 @@ func TestAnalyzeModelFallbackExitsThree(t *testing.T) {
 		t.Fatalf("load report: %v", err)
 	}
 	if !rep.Degraded {
-		t.Fatal("model fallback report must be degraded")
+		t.Fatal("model runtime failure report must be degraded")
 	}
 	if rep.Mode != "offline" {
 		t.Fatalf("fallback mode = %q, want offline", rep.Mode)
 	}
-	found := false
-	for _, limitation := range rep.Limitations {
-		if strings.Contains(limitation, "模型模式未实现，已回退离线规则") {
-			found = true
-		}
+	if rep.Versions["model"] != "none" {
+		t.Fatalf("fallback versions.model = %q, want none", rep.Versions["model"])
 	}
-	if !found {
+	joined := strings.Join(rep.Limitations, "\n")
+	if !strings.Contains(joined, "模型不可用，已回退离线规则") {
 		t.Fatalf("limitations missing model fallback note: %v", rep.Limitations)
 	}
 }

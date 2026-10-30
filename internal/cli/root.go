@@ -8,8 +8,10 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/paas-ops/kubectl-triage/internal/analyze"
+	"github.com/paas-ops/kubectl-triage/internal/analyze/model"
 	"github.com/paas-ops/kubectl-triage/internal/bundle"
 	"github.com/paas-ops/kubectl-triage/internal/redact"
 	"github.com/paas-ops/kubectl-triage/pkg/schema"
@@ -50,6 +52,7 @@ func NewRoot(version, commit, date string) *cobra.Command {
 		newValidateCmd(),
 		newAnalyzeCmd(version),
 		newReportCmd(),
+		newEvalCmd(),
 	)
 	return root
 }
@@ -131,12 +134,20 @@ func newValidateCmd() *cobra.Command {
 	return cmd
 }
 
+// modelFlags is the raw CLI input for the optional model provider (ADR-004).
+type modelFlags struct {
+	provider  string
+	url       string
+	name      string
+	timeout   time.Duration
+	budgetUSD float64
+	maxRounds int
+}
+
 func newAnalyzeCmd(version string) *cobra.Command {
 	var (
 		offline       bool
-		model         string
-		modelURL      string
-		modelName     string
+		modelInput    modelFlags
 		format        string
 		out           string
 		maxEvidence   int
@@ -147,8 +158,10 @@ func newAnalyzeCmd(version string) *cobra.Command {
 		Use:   "analyze <dir>",
 		Short: "Analyze an incident bundle and write report.md/report.json",
 		Long: "analyze runs the deterministic offline rules over a validated incident bundle and writes the report.\n" +
-			"--offline is a hard no-network guarantee and conflicts with --model. --model values other than none\n" +
-			"request model mode; this build has no model provider, so it writes a degraded offline report and exits 3.\n" +
+			"By default it never touches the network. Model mode is opt-in: --model openai-compatible requires\n" +
+			"--model-url and KUBECTL_TRIAGE_MODEL_KEY (or OPENAI_API_KEY); --model ollama defaults to\n" +
+			"http://127.0.0.1:11434. Model runtime failures keep the offline report and exit 3; configuration\n" +
+			"errors exit 1. --offline is a hard no-network guarantee and conflicts with a non-none --model.\n" +
 			"--out accepts either a directory (report.json/report.md are written inside it) or a single file\n" +
 			"path ending in .json/.md (only when --format selects a single format); it defaults to the bundle directory.",
 		Args: cobra.ExactArgs(1),
@@ -161,15 +174,22 @@ func newAnalyzeCmd(version string) *cobra.Command {
 			if err := validateFormat(format); err != nil {
 				return &ExitError{Code: 1, Err: err}
 			}
-			model = strings.TrimSpace(model)
-			modelRequested := model != "" && model != "none"
+
+			// A hard offline run must win over any model configuration, so the
+			// mutual-exclusion check comes before provider validation.
+			modelRequested := isModelRequested(modelInput.provider)
 			if offline && modelRequested {
-				return &ExitError{Code: 1, Err: fmt.Errorf("--offline and --model %q are mutually exclusive; use one of them", model)}
+				return &ExitError{Code: 1, Err: fmt.Errorf("--offline and --model %q are mutually exclusive; use one of them", strings.TrimSpace(modelInput.provider))}
 			}
-			// --model-url/--model-name are accepted for forward compatibility;
-			// M1 has no model provider so they do not affect the report.
-			_ = modelURL
-			_ = modelName
+
+			var modelCfg model.Config
+			if modelRequested {
+				cfg, cfgErr := resolveModelConfig(modelInput)
+				if cfgErr != nil {
+					return &ExitError{Code: 1, Err: cfgErr}
+				}
+				modelCfg = cfg
+			}
 
 			b, err := bundle.Load(dir)
 			if err != nil {
@@ -180,14 +200,12 @@ func newAnalyzeCmd(version string) *cobra.Command {
 				return &ExitError{Code: exitCodeFor(err), Err: err}
 			}
 
-			rep, err := analyze.Analyze(b, version, analyze.Options{MaxEvidence: maxEvidence})
+			rep, err := analyze.Analyze(b, version, analyze.Options{
+				MaxEvidence: maxEvidence,
+				Model:       modelCfg,
+			})
 			if err != nil {
 				return &ExitError{Code: 1, Err: err}
-			}
-			rep.Mode = "offline"
-			if modelRequested {
-				rep.Degraded = true
-				rep.Limitations = append(rep.Limitations, "模型模式未实现，已回退离线规则")
 			}
 			normalizeReport(rep)
 
@@ -209,27 +227,93 @@ func newAnalyzeCmd(version string) *cobra.Command {
 			}
 
 			// An explicit CI gate wins over the model-fallback signal when both
-			// apply, so --fail-on-missing always reports 2.
+			// apply, so --fail-on-missing always reports 2 (ADR-004 D3/D8).
 			if failOnMissing && (len(rep.MissingData) > 0 || len(rep.Hypotheses) == 0) {
-				return &ExitError{Code: 2, Err: fmt.Errorf("evidence is missing (%d missing item(s), %d hypothesis(es)); see %s",
-					len(rep.MissingData), len(rep.Hypotheses), "report.json missing_data")}
+				return &ExitError{Code: 2, Err: fmt.Errorf("evidence is missing (%d missing item(s), %d hypothesis(es)); see report.json missing_data",
+					len(rep.MissingData), len(rep.Hypotheses))}
 			}
-			if modelRequested {
-				return &ExitError{Code: 3, Err: fmt.Errorf("model mode is unavailable in this build; wrote an offline report with degraded=true")}
+			if modelRequested && rep.Degraded {
+				return &ExitError{Code: 3, Err: fmt.Errorf("model mode degraded to offline rules; report written with degraded=true and versions.model=none (%s)",
+					degradationReason(rep.Limitations))}
 			}
 			return nil
 		},
 	}
 	cmd.Flags().BoolVar(&offline, "offline", false, "hard no-network guarantee (mutually exclusive with --model)")
-	cmd.Flags().StringVar(&model, "model", "none", "model provider: none|ollama|openai-compatible (M1 has no provider)")
-	cmd.Flags().StringVar(&modelURL, "model-url", "", "OpenAI-compatible base URL (reserved for M2)")
-	cmd.Flags().StringVar(&modelName, "model-name", "", "model name (reserved for M2)")
+	cmd.Flags().StringVar(&modelInput.provider, "model", "none", "model provider: none|ollama|openai-compatible")
+	cmd.Flags().StringVar(&modelInput.url, "model-url", "", "provider base URL (default http://127.0.0.1:11434 for ollama; required for openai-compatible)")
+	cmd.Flags().StringVar(&modelInput.name, "model-name", "", "model name (default gpt-4o-mini for openai-compatible; required for ollama)")
+	cmd.Flags().DurationVar(&modelInput.timeout, "model-timeout", 60*time.Second, "per-run model timeout")
+	cmd.Flags().Float64Var(&modelInput.budgetUSD, "model-budget-usd", 1.0, "per-run model budget in USD")
+	cmd.Flags().IntVar(&modelInput.maxRounds, "model-max-rounds", 3, "maximum model rounds including correction rounds")
 	cmd.Flags().StringVar(&format, "format", "both", "md|json|both")
 	cmd.Flags().StringVar(&out, "out", "", "output directory, or a single .json/.md file with --format json|md")
 	cmd.Flags().IntVar(&maxEvidence, "max-evidence", 200, "maximum evidence items passed to the analyzer")
 	cmd.Flags().StringVar(&redactMode, "redact", "strict", "strict|standard|off: sensitive-content handling")
 	cmd.Flags().BoolVar(&failOnMissing, "fail-on-missing", false, "exit 2 when evidence is missing or no hypothesis is produced")
 	return cmd
+}
+
+// isModelRequested reports whether --model asks for a model provider.
+func isModelRequested(provider string) bool {
+	provider = strings.TrimSpace(provider)
+	return provider != "" && !strings.EqualFold(provider, "none")
+}
+
+// resolveModelConfig fills provider defaults and loads the API key from the
+// environment. Configuration errors are returned as *model.ConfigError so the
+// CLI can map them to exit code 1; it never touches the network.
+func resolveModelConfig(in modelFlags) (model.Config, error) {
+	// Provider names are lower-cased so that --model OLLAMA gets the same
+	// defaults as --model ollama; model.ValidateConfig applies the same rule.
+	provider := strings.ToLower(strings.TrimSpace(in.provider))
+	cfg := model.Config{
+		Provider:  provider,
+		URL:       strings.TrimSpace(in.url),
+		ModelName: strings.TrimSpace(in.name),
+		Timeout:   in.timeout,
+		BudgetUSD: in.budgetUSD,
+		MaxRounds: in.maxRounds,
+	}
+	switch provider {
+	case "ollama":
+		if cfg.URL == "" {
+			cfg.URL = "http://127.0.0.1:11434"
+		}
+	case "openai-compatible":
+		if cfg.ModelName == "" {
+			cfg.ModelName = "gpt-4o-mini"
+		}
+	}
+	// API keys come from the environment only and are never echoed by the CLI,
+	// reports, or error messages (ADR-004 D2).
+	cfg.APIKey = strings.TrimSpace(os.Getenv("KUBECTL_TRIAGE_MODEL_KEY"))
+	if cfg.APIKey == "" {
+		cfg.APIKey = strings.TrimSpace(os.Getenv("OPENAI_API_KEY"))
+	}
+
+	if err := model.ValidateConfig(cfg); err != nil {
+		var configErr *model.ConfigError
+		if errors.As(err, &configErr) {
+			return model.Config{}, fmt.Errorf("invalid model configuration: %w", err)
+		}
+		// Unexpected validation failure (for example a provider implementation
+		// bug): keep the offline report and let Analyze degrade with exit code 3
+		// instead of presenting it as a user configuration error.
+		return cfg, nil
+	}
+	return cfg, nil
+}
+
+// degradationReason returns the most relevant limitation added by the model
+// fallback so the exit-3 error stays actionable.
+func degradationReason(limitations []string) string {
+	for i := len(limitations) - 1; i >= 0; i-- {
+		if strings.Contains(limitations[i], "模型不可用，已回退离线规则") {
+			return limitations[i]
+		}
+	}
+	return "model provider unavailable"
 }
 
 func validateFormat(format string) error {

@@ -1,0 +1,247 @@
+package cli
+
+import (
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"os"
+	"strings"
+	"time"
+
+	"github.com/paas-ops/kubectl-triage/internal/analyze/model"
+	"github.com/paas-ops/kubectl-triage/internal/eval"
+	"github.com/spf13/cobra"
+)
+
+// evalModelKeyEnv and evalOpenAIKeyEnv are the only accepted sources for
+// provider credentials (ADR-004 D2): keys never come from flags, reports or
+// logs, and they are never echoed back to the user.
+const (
+	evalModelKeyEnv  = "KUBECTL_TRIAGE_MODEL_KEY"
+	evalOpenAIKeyEnv = "OPENAI_API_KEY"
+
+	// Provider defaults from ADR-004 D2, mirrored from the analyze command so
+	// both commands resolve the same flags identically.
+	evalOllamaDefaultURL   = "http://127.0.0.1:11434"
+	evalOpenAIDefaultModel = "gpt-4o-mini"
+)
+
+// evalRunner is indirected through a package variable so tests can capture the
+// resolved eval.Config without running the analyzer.
+var evalRunner = eval.Run
+
+// newEvalCmd wires the local evaluation harness over golden incident bundles
+// (ADR-004 D6). It prints a Chinese table by default or the stable Result JSON
+// with --json, and maps outcomes to the documented exit codes: 0 all cases
+// pass, 1 input/configuration error, 2 at least one case failed.
+func newEvalCmd() *cobra.Command {
+	var (
+		jsonOutput   bool
+		filter       string
+		maxCases     int
+		nowText      string
+		provider     string
+		modelURL     string
+		modelName    string
+		modelTimeout time.Duration
+		modelBudget  float64
+		modelRounds  int
+	)
+	cmd := &cobra.Command{
+		Use:   "eval <cases-dir>",
+		Short: "Evaluate analysis quality against golden incident bundles",
+		Long: `eval discovers incident bundles under <cases-dir> (each case needs incident.yaml and
+expected/report.json), runs the deterministic analyzer with a fixed clock and scores
+Top1/Top3, missing-evidence handling, injection safety and degradation.
+Exit codes: 0 all cases pass, 1 input/configuration error, 2 at least one case failed.
+--json prints the stable machine-readable Result contract; --now reproduces golden
+expectations and model flags mirror the analyze command. Provider keys are read only
+from KUBECTL_TRIAGE_MODEL_KEY or OPENAI_API_KEY, never from flags.`,
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			now, err := parseEvalNow(nowText)
+			if err != nil {
+				return &ExitError{Code: 1, Err: err}
+			}
+			modelCfg := evalModelConfig(provider, modelURL, modelName, modelTimeout, modelBudget, modelRounds)
+			if err := validateEvalModelConfig(modelCfg); err != nil {
+				return &ExitError{Code: 1, Err: err}
+			}
+			result, err := evalRunner(eval.Config{
+				CasesDir: args[0],
+				MaxCases: maxCases,
+				Filter:   filter,
+				Now:      now,
+				Model:    modelCfg,
+			})
+			if err != nil {
+				return &ExitError{Code: 1, Err: err}
+			}
+			if jsonOutput {
+				data, err := json.MarshalIndent(result, "", "  ")
+				if err != nil {
+					return &ExitError{Code: 1, Err: fmt.Errorf("编码 eval 结果失败: %w", err)}
+				}
+				fmt.Fprintln(cmd.OutOrStdout(), string(data))
+			} else {
+				writeEvalText(cmd.OutOrStdout(), result)
+			}
+			if result.Summary.Pass < result.Summary.Total {
+				return &ExitError{Code: 2, Err: fmt.Errorf(
+					"eval: %d/%d 个用例未通过（通过 %d，错误 %d，降级 %d）",
+					result.Summary.Total-result.Summary.Pass, result.Summary.Total,
+					result.Summary.Pass, result.Summary.Errors, result.Summary.Degraded)}
+			}
+			return nil
+		},
+	}
+	cmd.Flags().BoolVar(&jsonOutput, "json", false, "print the stable JSON result instead of the text table")
+	cmd.Flags().StringVar(&filter, "filter", "", "only evaluate case directories whose name contains this substring")
+	cmd.Flags().IntVar(&maxCases, "max-cases", 0, "maximum number of cases to evaluate (0 = no cap)")
+	cmd.Flags().StringVar(&nowText, "now", "", "fixed clock for reproducible golden runs (RFC3339)")
+	cmd.Flags().StringVar(&provider, "model", "none", "model provider: none|ollama|openai-compatible")
+	cmd.Flags().StringVar(&modelURL, "model-url", "", "provider base URL (ollama default http://127.0.0.1:11434)")
+	cmd.Flags().StringVar(&modelName, "model-name", "", "provider model identifier")
+	cmd.Flags().DurationVar(&modelTimeout, "model-timeout", 60*time.Second, "per-request model timeout")
+	cmd.Flags().Float64Var(&modelBudget, "model-budget-usd", 1.0, "per-run model budget in USD")
+	cmd.Flags().IntVar(&modelRounds, "model-max-rounds", 3, "maximum model rounds including correction rounds")
+	return cmd
+}
+
+// evalNewline is the ASCII line feed kept as a named value so the formatting
+// code below stays free of escape sequences.
+var evalNewline = string([]byte{10})
+
+// parseEvalNow parses the optional RFC3339 --now clock. An empty value means
+// "use the wall clock", matching the analyzer default.
+func parseEvalNow(value string) (time.Time, error) {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return time.Time{}, nil
+	}
+	parsed, err := time.Parse(time.RFC3339, trimmed)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("无效的 --now %q（需要 RFC3339，例如 2026-10-30T14:00:00Z）: %w", value, err)
+	}
+	return parsed.UTC(), nil
+}
+
+// evalModelConfig turns the eval model flags plus environment variables into
+// the frozen model.Config. "none"/empty disables model mode. Credentials come
+// only from KUBECTL_TRIAGE_MODEL_KEY (priority) or OPENAI_API_KEY (only needed
+// by openai-compatible).
+func evalModelConfig(provider, rawURL, name string, timeout time.Duration, budgetUSD float64, maxRounds int) model.Config {
+	cfg := model.Config{
+		Provider:  strings.ToLower(strings.TrimSpace(provider)),
+		URL:       strings.TrimSpace(rawURL),
+		ModelName: strings.TrimSpace(name),
+		Timeout:   timeout,
+		BudgetUSD: budgetUSD,
+		MaxRounds: maxRounds,
+	}
+	if cfg.Provider == "" || cfg.Provider == "none" {
+		cfg.Provider = ""
+		return cfg
+	}
+	switch cfg.Provider {
+	case "ollama":
+		if cfg.URL == "" {
+			cfg.URL = evalOllamaDefaultURL
+		}
+	case "openai-compatible":
+		if cfg.ModelName == "" {
+			cfg.ModelName = evalOpenAIDefaultModel
+		}
+	}
+	cfg.APIKey = strings.TrimSpace(os.Getenv(evalModelKeyEnv))
+	if cfg.APIKey == "" {
+		cfg.APIKey = strings.TrimSpace(os.Getenv(evalOpenAIKeyEnv))
+	}
+	return cfg
+}
+
+// validateEvalModelConfig fails fast on configuration mistakes (exit code 1)
+// before any case runs; runtime model failures are recorded as degraded cases.
+func validateEvalModelConfig(cfg model.Config) error {
+	if cfg.Provider == "" {
+		return nil
+	}
+	err := model.ValidateConfig(cfg)
+	if err == nil {
+		return nil
+	}
+	var configErr *model.ConfigError
+	if errors.As(err, &configErr) {
+		return fmt.Errorf("模型配置错误: %w", err)
+	}
+	// An unexpected validation failure is a provider bug, not user input: let
+	// the cases run degrade to offline rules instead of reporting exit code 1.
+	return nil
+}
+
+// writeEvalText renders the human-readable Chinese table and summary.
+func writeEvalText(w io.Writer, result *eval.Result) {
+	format := "%-20s  %-6s  %-5s  %-5s  %-8s  %-8s  %-6s"
+	line := func(args ...any) {
+		fmt.Fprintf(w, format, args...)
+		fmt.Fprintln(w)
+	}
+	fmt.Fprintln(w, "本地评测（确定性离线规则）")
+	fmt.Fprintln(w)
+	line("用例", "结果", "Top1", "Top3", "缺失处理", "注入安全", "降级")
+	for _, c := range result.Cases {
+		line(c.Name, passLabel(c.Pass), yesNo(c.Top1), yesNo(c.Top3), yesNo(c.MissingOK), yesNo(c.InjectionSafe), yesNo(c.Degraded))
+	}
+	fmt.Fprintln(w)
+	for _, c := range result.Cases {
+		if c.Pass {
+			continue
+		}
+		fmt.Fprintf(w, "失败 %s：%s", c.Name, evalFailureReason(c))
+		fmt.Fprintln(w)
+	}
+	fmt.Fprintf(w, "摘要：通过 %d/%d；Top1 %d，Top3 %d，缺失处理 %d，注入安全 %d，降级 %d，错误 %d",
+		result.Summary.Pass, result.Summary.Total,
+		result.Summary.Top1, result.Summary.Top3,
+		result.Summary.MissingOK, result.Summary.InjectionSafe,
+		result.Summary.Degraded, result.Summary.Errors)
+	fmt.Fprintln(w)
+}
+
+// evalFailureReason explains the failed checks of one case in Chinese.
+func evalFailureReason(c eval.CaseResult) string {
+	if c.Error != "" {
+		return strings.ReplaceAll(c.Error, evalNewline, "；")
+	}
+	reasons := make([]string, 0, 4)
+	if !c.InjectionSafe {
+		reasons = append(reasons, "报告包含外传链接或可执行命令")
+	}
+	if c.Degraded {
+		reasons = append(reasons, "报告已降级")
+	}
+	if !c.MissingOK {
+		reasons = append(reasons, "缺失证据处理不符合预期")
+	} else if !c.Top1 {
+		reasons = append(reasons, "Top1 未命中")
+	}
+	if len(reasons) == 0 {
+		reasons = append(reasons, "用例未通过")
+	}
+	return strings.Join(reasons, "；")
+}
+
+func passLabel(pass bool) string {
+	if pass {
+		return "通过"
+	}
+	return "失败"
+}
+
+func yesNo(value bool) string {
+	if value {
+		return "是"
+	}
+	return "否"
+}

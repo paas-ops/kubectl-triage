@@ -18,6 +18,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
+	"github.com/paas-ops/kubectl-triage/internal/analyze/model"
 	"github.com/paas-ops/kubectl-triage/internal/analyze/rule"
 	"github.com/paas-ops/kubectl-triage/internal/bundle"
 	"github.com/paas-ops/kubectl-triage/internal/evidence"
@@ -166,6 +167,21 @@ func Analyze(b *bundle.Bundle, cliVersion string, opts Options) (*report.Report,
 		rep.Summary = "现有证据不足以形成可引用的根因假设。"
 		rep.RecommendedChecks = []string{}
 		rep.SuggestedFix = ""
+	}
+
+	// Optional model pass (ADR-004). The offline report above is always the
+	// fallback, so any model/config/runtime failure degrades instead of failing
+	// the whole run; the CLI maps degraded model runs to exit code 3.
+	if cfg := opts.Model; cfg.Provider != "" && !strings.EqualFold(cfg.Provider, "none") {
+		enhanced, modelErr := model.Enhance(b, rep, cfg)
+		if modelErr != nil {
+			rep.Mode = "offline"
+			rep.Degraded = true
+			rep.Versions["model"] = "none"
+			rep.Limitations = append(rep.Limitations, "模型不可用，已回退离线规则："+modelErr.Error())
+		} else if enhanced != nil {
+			rep = enhanced
+		}
 	}
 	return rep, nil
 }
