@@ -38,8 +38,10 @@ var evalRunner = eval.Run
 func newEvalCmd() *cobra.Command {
 	var (
 		jsonOutput   bool
+		validateSet  bool
 		filter       string
 		maxCases     int
+		minCases     int
 		nowText      string
 		provider     string
 		modelURL     string
@@ -57,9 +59,22 @@ Top1/Top3, missing-evidence handling, injection safety and degradation.
 Exit codes: 0 all cases pass, 1 input/configuration error, 2 at least one case failed.
 --json prints the stable machine-readable Result contract; --now reproduces golden
 expectations and model flags mirror the analyze command. Provider keys are read only
-from KUBECTL_TRIAGE_MODEL_KEY or OPENAI_API_KEY, never from flags.`,
+from KUBECTL_TRIAGE_MODEL_KEY or OPENAI_API_KEY, never from flags.
+--validate switches to set validation (ADR-007 D4): it checks discovery, incident and
+expected-report schemas, unique case names, credential patterns and --min-cases without
+analyzing anything. --filter/--max-cases still apply; --now and model flags are ignored
+in validate mode.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if minCases < 0 {
+				return &ExitError{Code: 1, Err: fmt.Errorf("--min-cases 不能为负数")}
+			}
+			if validateSet {
+				return runEvalSetValidation(cmd, args[0], jsonOutput, filter, maxCases, minCases)
+			}
+			if minCases != 0 {
+				return &ExitError{Code: 1, Err: fmt.Errorf("--min-cases 只能与 --validate 一起使用")}
+			}
 			now, err := parseEvalNow(nowText)
 			if err != nil {
 				return &ExitError{Code: 1, Err: err}
@@ -99,6 +114,8 @@ from KUBECTL_TRIAGE_MODEL_KEY or OPENAI_API_KEY, never from flags.`,
 	cmd.Flags().BoolVar(&jsonOutput, "json", false, "print the stable JSON result instead of the text table")
 	cmd.Flags().StringVar(&filter, "filter", "", "only evaluate case directories whose name contains this substring")
 	cmd.Flags().IntVar(&maxCases, "max-cases", 0, "maximum number of cases to evaluate (0 = no cap)")
+	cmd.Flags().BoolVar(&validateSet, "validate", false, "only validate the evaluation set (schemas, unique names, credentials, --min-cases); does not analyze")
+	cmd.Flags().IntVar(&minCases, "min-cases", 0, "with --validate: require at least N cases (0 = no minimum)")
 	cmd.Flags().StringVar(&nowText, "now", "", "fixed clock for reproducible golden runs (RFC3339)")
 	cmd.Flags().StringVar(&provider, "model", "none", "model provider: none|ollama|openai-compatible")
 	cmd.Flags().StringVar(&modelURL, "model-url", "", "provider base URL (ollama default http://127.0.0.1:11434)")
@@ -178,6 +195,73 @@ func validateEvalModelConfig(cfg model.Config) error {
 	// An unexpected validation failure is a provider bug, not user input: let
 	// the cases run degrade to offline rules instead of reporting exit code 1.
 	return nil
+}
+
+// runEvalSetValidation implements --validate: it only validates the evaluation
+// set (schemas, unique case names, credential patterns, --min-cases), never runs
+// the analyzer and never reaches the network. --now and the model flags are
+// accepted but ignored in this mode. Exit codes: 0 valid and above the minimum,
+// 1 input/configuration error, 2 invalid cases or too few cases.
+func runEvalSetValidation(cmd *cobra.Command, casesDir string, jsonOutput bool, filter string, maxCases, minCases int) error {
+	validation, err := eval.ValidateSet(eval.Config{
+		CasesDir: casesDir,
+		MaxCases: maxCases,
+		Filter:   filter,
+		MinCases: minCases,
+	})
+	if err != nil {
+		return &ExitError{Code: 1, Err: err}
+	}
+	if jsonOutput {
+		data, err := json.MarshalIndent(validation, "", "  ")
+		if err != nil {
+			return &ExitError{Code: 1, Err: fmt.Errorf("编码评测集校验结果失败: %w", err)}
+		}
+		fmt.Fprintln(cmd.OutOrStdout(), string(data))
+	} else {
+		writeEvalSetText(cmd.OutOrStdout(), casesDir, validation)
+	}
+	if validation.Summary.Invalid > 0 {
+		return &ExitError{Code: 2, Err: fmt.Errorf("eval: %d/%d 个用例未通过集合校验",
+			validation.Summary.Invalid, validation.Summary.Total)}
+	}
+	if validation.Summary.MinCasesRequired > 0 && validation.Summary.Total < validation.Summary.MinCasesRequired {
+		return &ExitError{Code: 2, Err: fmt.Errorf("eval: 用例数 %d 少于 --min-cases 要求的 %d",
+			validation.Summary.Total, validation.Summary.MinCasesRequired)}
+	}
+	return nil
+}
+
+// writeEvalSetText renders the human-readable Chinese set-validation summary.
+func writeEvalSetText(w io.Writer, casesDir string, validation *eval.SetValidation) {
+	fmt.Fprintf(w, "评测集校验：%s", casesDir)
+	fmt.Fprintln(w)
+	fmt.Fprintln(w)
+	for _, c := range validation.Cases {
+		if c.Valid {
+			fmt.Fprintf(w, "[有效] %s", c.Name)
+			fmt.Fprintln(w)
+			continue
+		}
+		fmt.Fprintf(w, "[无效] %s", c.Name)
+		fmt.Fprintln(w)
+		for _, problem := range c.Errors {
+			fmt.Fprintf(w, "  - %s", strings.ReplaceAll(problem, evalNewline, "；"))
+			fmt.Fprintln(w)
+		}
+	}
+	fmt.Fprintln(w)
+	fmt.Fprintf(w, "摘要：共 %d 个用例；有效 %d，无效 %d；最低数量要求 %d",
+		validation.Summary.Total, validation.Summary.Valid,
+		validation.Summary.Invalid, validation.Summary.MinCasesRequired)
+	if validation.Summary.MinCasesRequired > 0 {
+		if validation.Summary.Total >= validation.Summary.MinCasesRequired {
+			fmt.Fprint(w, "（数量达标）")
+		} else {
+			fmt.Fprint(w, "（数量不足）")
+		}
+	}
+	fmt.Fprintln(w)
 }
 
 // writeEvalText renders the human-readable Chinese table and summary.

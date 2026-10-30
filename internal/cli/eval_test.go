@@ -189,6 +189,8 @@ func TestEvalCommandModelFlagDefaults(t *testing.T) {
 		{"json", "false"},
 		{"filter", ""},
 		{"max-cases", "0"},
+		{"validate", "false"},
+		{"min-cases", "0"},
 		{"now", ""},
 	}
 	for _, tc := range wants {
@@ -327,4 +329,147 @@ func TestEvalParseNow(t *testing.T) {
 	if _, err := parseEvalNow("2026-10-30"); err == nil {
 		t.Fatal("date-only --now must be rejected")
 	}
+}
+
+func TestEvalCommandValidateGoldenSet(t *testing.T) {
+	res := runEvalCommand(t, "eval", evalGoldenDir, "--validate")
+	requireEvalExit(t, res, 0)
+	for _, want := range []string{"评测集校验", "[有效] oom-01", "有效 12", "无效 0"} {
+		if !strings.Contains(res.out, want) {
+			t.Fatalf("validate output missing %q: %q", want, res.out)
+		}
+	}
+}
+
+func TestEvalCommandValidateJSONContract(t *testing.T) {
+	first := runEvalCommand(t, "eval", evalGoldenDir, "--validate", "--json")
+	requireEvalExit(t, first, 0)
+	trimmed := strings.TrimSpace(first.out)
+	if !strings.HasPrefix(trimmed, "{") {
+		t.Fatalf("--validate --json output must be a JSON object: %q", first.out)
+	}
+	var validation eval.SetValidation
+	if err := json.Unmarshal([]byte(trimmed), &validation); err != nil {
+		t.Fatalf("parse eval-set JSON: %v", err)
+	}
+	if validation.Kind != eval.SetKind || validation.Version != eval.SetContractVersion {
+		t.Fatalf("kind/version = %q/%q, want %q/%q", validation.Kind, validation.Version, eval.SetKind, eval.SetContractVersion)
+	}
+	if validation.Summary.Total != 12 || validation.Summary.Valid != 12 || validation.Summary.Invalid != 0 || validation.Summary.MinCasesRequired != 0 {
+		t.Fatalf("summary = %+v", validation.Summary)
+	}
+	if len(validation.Cases) != 12 {
+		t.Fatalf("cases = %d, want 12", len(validation.Cases))
+	}
+	second := runEvalCommand(t, "eval", evalGoldenDir, "--validate", "--json")
+	requireEvalExit(t, second, 0)
+	if trimmed != strings.TrimSpace(second.out) {
+		t.Fatal("--validate --json output must be deterministic across runs")
+	}
+	if strings.Contains(trimmed, "2026-") {
+		t.Fatal("eval-set JSON must not contain timestamps")
+	}
+}
+
+func TestEvalCommandValidateMinCases(t *testing.T) {
+	enough := runEvalCommand(t, "eval", evalGoldenDir, "--validate", "--json", "--min-cases", "12")
+	requireEvalExit(t, enough, 0)
+	var validation eval.SetValidation
+	if err := json.Unmarshal([]byte(strings.TrimSpace(enough.out)), &validation); err != nil {
+		t.Fatalf("parse eval-set JSON: %v", err)
+	}
+	if validation.Summary.MinCasesRequired != 12 {
+		t.Fatalf("min_cases_required = %d, want 12", validation.Summary.MinCasesRequired)
+	}
+
+	insufficient := runEvalCommand(t, "eval", evalGoldenDir, "--validate", "--json", "--min-cases", "100")
+	requireEvalExit(t, insufficient, 2)
+	validation = eval.SetValidation{}
+	if err := json.Unmarshal([]byte(strings.TrimSpace(insufficient.out)), &validation); err != nil {
+		t.Fatalf("parse eval-set JSON: %v", err)
+	}
+	if validation.Summary.MinCasesRequired != 100 || validation.Summary.Total != 12 || validation.Summary.Invalid != 0 {
+		t.Fatalf("summary = %+v", validation.Summary)
+	}
+
+	text := runEvalCommand(t, "eval", evalGoldenDir, "--validate", "--min-cases", "100")
+	requireEvalExit(t, text, 2)
+	if !strings.Contains(text.out, "数量不足") {
+		t.Fatalf("text output must report the shortfall: %q", text.out)
+	}
+}
+
+func TestEvalCommandValidateInvalidSet(t *testing.T) {
+	root := t.TempDir()
+	caseDir := filepath.Join(root, "broken-01")
+	writeEvalCLIFile(t, filepath.Join(caseDir, "incident.yaml"), "id: broken")
+
+	res := runEvalCommand(t, "eval", root, "--validate", "--json")
+	requireEvalExit(t, res, 2)
+	var validation eval.SetValidation
+	if err := json.Unmarshal([]byte(strings.TrimSpace(res.out)), &validation); err != nil {
+		t.Fatalf("parse eval-set JSON: %v", err)
+	}
+	if validation.Summary.Total != 1 || validation.Summary.Valid != 0 || validation.Summary.Invalid != 1 {
+		t.Fatalf("summary = %+v", validation.Summary)
+	}
+	if validation.Cases[0].Valid || len(validation.Cases[0].Errors) == 0 {
+		t.Fatalf("broken case must be invalid with errors: %+v", validation.Cases[0])
+	}
+
+	text := runEvalCommand(t, "eval", root, "--validate")
+	requireEvalExit(t, text, 2)
+	for _, want := range []string{"[无效] broken-01", "无效 1"} {
+		if !strings.Contains(text.out, want) {
+			t.Fatalf("text output missing %q: %q", want, text.out)
+		}
+	}
+}
+
+func TestEvalCommandValidateExitOne(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{"missing cases dir", []string{"eval", filepath.Join(t.TempDir(), "missing"), "--validate"}},
+		{"empty cases dir", []string{"eval", t.TempDir(), "--validate"}},
+		{"filter without match", []string{"eval", evalGoldenDir, "--validate", "--filter", "zzz-no-such-case"}},
+		{"negative min cases", []string{"eval", evalGoldenDir, "--validate", "--min-cases", "-1"}},
+		{"min cases without validate", []string{"eval", evalGoldenDir, "--min-cases", "3"}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			res := runEvalCommand(t, tc.args...)
+			requireEvalExit(t, res, 1)
+		})
+	}
+}
+
+func TestEvalCommandValidateFilterAndMaxCases(t *testing.T) {
+	filtered := runEvalCommand(t, "eval", evalGoldenDir, "--validate", "--json", "--filter", "missing")
+	requireEvalExit(t, filtered, 0)
+	var validation eval.SetValidation
+	if err := json.Unmarshal([]byte(strings.TrimSpace(filtered.out)), &validation); err != nil {
+		t.Fatalf("parse eval-set JSON: %v", err)
+	}
+	if validation.Summary.Total != 1 || validation.Cases[0].Name != "missing-01" {
+		t.Fatalf("filtered cases = %+v", validation.Cases)
+	}
+
+	capped := runEvalCommand(t, "eval", evalGoldenDir, "--validate", "--json", "--max-cases", "1")
+	requireEvalExit(t, capped, 0)
+	validation = eval.SetValidation{}
+	if err := json.Unmarshal([]byte(strings.TrimSpace(capped.out)), &validation); err != nil {
+		t.Fatalf("parse eval-set JSON: %v", err)
+	}
+	if validation.Summary.Total != 1 || validation.Cases[0].Name != "crashloop-01" {
+		t.Fatalf("capped cases = %+v", validation.Cases)
+	}
+}
+
+func TestEvalCommandValidateIgnoresAnalysisFlags(t *testing.T) {
+	// Validate mode never analyzes and never touches the network, so --now and
+	// model flags have no effect; this keeps CI command lines composable.
+	res := runEvalCommand(t, "eval", evalGoldenDir, "--validate", "--now", "not-a-timestamp", "--model", "bananas")
+	requireEvalExit(t, res, 0)
 }

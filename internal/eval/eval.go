@@ -55,12 +55,15 @@ const maxEvidence = 200
 // MaxCases <= 0 means no cap. Filter keeps case directories whose base name
 // contains the substring. A zero Now means "wall clock" as passed through to
 // analyze.Options; golden reproducibility uses an injected fixed clock.
+// MinCases is the minimum case count required by ValidateSet (<= 0 means no
+// minimum); Run ignores it.
 type Config struct {
 	CasesDir string
 	MaxCases int
 	Filter   string
 	Now      time.Time
 	Model    model.Config
+	MinCases int
 }
 
 // CaseResult is the frozen per-case JSON shape. Do not add timestamps or
@@ -132,23 +135,9 @@ func Run(cfg Config) (*Result, error) {
 // expected/report.json, filters by directory name, sorts by case name and
 // applies the MaxCases cap.
 func discoverCases(casesDir, filter string, maxCases int) ([]caseRef, error) {
-	trimmed := strings.TrimSpace(casesDir)
-	if trimmed == "" {
-		return nil, fmt.Errorf("用例目录不能为空")
-	}
-	abs, err := filepath.Abs(trimmed)
+	abs, err := resolveCasesDir(casesDir)
 	if err != nil {
-		return nil, fmt.Errorf("解析用例目录 %q 失败: %w", casesDir, err)
-	}
-	info, err := os.Stat(abs)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, fmt.Errorf("用例目录不存在: %s", abs)
-		}
-		return nil, fmt.Errorf("读取用例目录 %s 失败: %w", abs, err)
-	}
-	if !info.IsDir() {
-		return nil, fmt.Errorf("用例目录不是目录: %s", abs)
+		return nil, err
 	}
 
 	var found []caseRef
@@ -187,6 +176,30 @@ func discoverCases(casesDir, filter string, maxCases int) ([]caseRef, error) {
 		found = found[:maxCases]
 	}
 	return found, nil
+}
+
+// resolveCasesDir validates the cases directory and returns its absolute path.
+// Run and ValidateSet share the same discovery root checks.
+func resolveCasesDir(casesDir string) (string, error) {
+	trimmed := strings.TrimSpace(casesDir)
+	if trimmed == "" {
+		return "", fmt.Errorf("用例目录不能为空")
+	}
+	abs, err := filepath.Abs(trimmed)
+	if err != nil {
+		return "", fmt.Errorf("解析用例目录 %q 失败: %w", casesDir, err)
+	}
+	info, err := os.Stat(abs)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", fmt.Errorf("用例目录不存在: %s", abs)
+		}
+		return "", fmt.Errorf("读取用例目录 %s 失败: %w", abs, err)
+	}
+	if !info.IsDir() {
+		return "", fmt.Errorf("用例目录不是目录: %s", abs)
+	}
+	return abs, nil
 }
 
 // isCaseDir reports whether dir looks like a golden case directory.
