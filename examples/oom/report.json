@@ -1,0 +1,76 @@
+{
+  "schema_version": "1.0",
+  "incident": {
+    "id": "example-oom",
+    "alertname": "KubePodCrashLooping",
+    "severity": "critical",
+    "cluster": "local",
+    "namespace": "checkout",
+    "workload": "checkout-api",
+    "observed_at": "2026-10-30T05:58:23Z",
+    "collected_at": "2026-10-30T06:08:23Z",
+    "source": "example"
+  },
+  "generated_at": "2026-10-30T06:08:23Z",
+  "mode": "offline",
+  "degraded": false,
+  "summary": "容器因内存不足被 OOMKilled（需核对 memory limit 与工作集峰值）",
+  "evidence": [
+    {
+      "id": "ev-001",
+      "source": "k8s/events.json",
+      "observed_at": "2026-10-30T05:58:23Z",
+      "collected_at": "2026-10-30T06:08:23Z",
+      "summary": "k8s/events.json (JSON snapshot, 251 bytes)",
+      "ref": "k8s/events.json",
+      "sha256": "sha256:d9824d9cf535a89010f1e94ac6cf75a0e34f3e2bc206cc5c5f48b81abeb124ee"
+    },
+    {
+      "id": "ev-002",
+      "source": "logs/app.log",
+      "observed_at": "2026-10-30T05:58:23Z",
+      "collected_at": "2026-10-30T06:08:23Z",
+      "summary": "2026-10-12T09:13:50Z INFO starting checkout-api",
+      "ref": "logs/app.log",
+      "sha256": "sha256:50b2acb8f3265ed5bde8346bf70752eff2316afb8c7c4c001bb97bfb1ad7d165"
+    },
+    {
+      "id": "ev-003",
+      "source": "metrics/memory.json",
+      "observed_at": "2026-10-30T05:58:23Z",
+      "collected_at": "2026-10-30T06:08:23Z",
+      "summary": "metrics/memory.json (JSON snapshot, 182 bytes)",
+      "ref": "metrics/memory.json",
+      "sha256": "sha256:55a11f15bbca8c3c8860c0eff195ad3835bcaac1f2a2128dc6583c6f71ea3dd3"
+    }
+  ],
+  "hypotheses": [
+    {
+      "rank": 1,
+      "statement": "容器因内存不足被 OOMKilled（需核对 memory limit 与工作集峰值）",
+      "confidence": "high",
+      "evidence_ids": [
+        "ev-001",
+        "ev-002"
+      ],
+      "contradictions": null
+    }
+  ],
+  "missing_data": [],
+  "recommended_checks": [
+    "核对容器 memory limit 与最近一次发布是否降低 limit",
+    "查看同一节点其他 Pod 的内存压力与驱逐事件",
+    "对比故障前 30 分钟容器 working set 与 limit"
+  ],
+  "suggested_fix": "只读建议：在确认峰值后评估提高 memory limit 或修复内存泄漏；不自动修改工作负载。",
+  "limitations": [
+    "v0.0.1 离线规则仅做签名匹配，正式评测前不得作为生产决策唯一依据。",
+    "未接入模型；不读取集群、不访问网络。",
+    "所有建议均为只读，不自动执行任何修复。"
+  ],
+  "versions": {
+    "cli": "dev",
+    "model": "none",
+    "rules": "rule-v0.1"
+  }
+}

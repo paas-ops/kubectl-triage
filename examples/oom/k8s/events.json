@@ -1,0 +1,11 @@
+{
+  "kind": "EventList",
+  "items": [
+    {
+      "type": "Warning",
+      "reason": "OOMKilled",
+      "message": "Container checkout-api was OOMKilled (exitCode=137)",
+      "involvedObject": {"kind": "Pod", "name": "checkout-api-7d9f"}
+    }
+  ]
+}

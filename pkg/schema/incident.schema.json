@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/bavocado/kubectl-triage/pkg/schema/incident.schema.json",
+  "title": "kubectl-triage incident metadata",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id", "alertname", "severity", "cluster", "namespace",
+    "workload", "observed_at", "collected_at", "source"
+  ],
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "alertname": { "type": "string", "minLength": 1 },
+    "severity": { "enum": ["critical", "warning", "info"] },
+    "cluster": { "type": "string", "minLength": 1 },
+    "namespace": { "type": "string", "minLength": 1 },
+    "workload": { "type": "string", "minLength": 1 },
+    "observed_at": { "type": "string", "format": "date-time" },
+    "collected_at": { "type": "string", "format": "date-time" },
+    "source": { "type": "string", "minLength": 1 }
+  }
+}

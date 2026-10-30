@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/bavocado/kubectl-triage/pkg/schema/report.schema.json",
+  "title": "kubectl-triage report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "incident", "generated_at", "mode", "degraded",
+    "summary", "evidence", "hypotheses", "missing_data",
+    "recommended_checks", "suggested_fix", "limitations", "versions"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "1.0" },
+    "incident": { "$ref": "incident.schema.json" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "mode": { "enum": ["offline", "model"] },
+    "degraded": { "type": "boolean" },
+    "summary": { "type": "string" },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "source", "observed_at", "collected_at", "summary", "ref", "sha256"],
+        "properties": {
+          "id": { "type": "string" },
+          "source": { "type": "string" },
+          "observed_at": { "type": "string", "format": "date-time" },
+          "collected_at": { "type": "string", "format": "date-time" },
+          "summary": { "type": "string" },
+          "ref": { "type": "string" },
+          "sha256": { "type": "string" }
+        }
+      }
+    },
+    "hypotheses": {
+      "type": "array",
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["rank", "statement", "confidence", "evidence_ids", "contradictions"],
+        "properties": {
+          "rank": { "type": "integer", "minimum": 1 },
+          "statement": { "type": "string" },
+          "confidence": { "enum": ["high", "mid", "low"] },
+          "evidence_ids": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+          "contradictions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["evidence_id", "note"],
+              "properties": {
+                "evidence_id": { "type": "string" },
+                "note": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "missing_data": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["source", "reason", "next_step"],
+        "properties": {
+          "source": { "type": "string" },
+          "reason": { "type": "string" },
+          "next_step": { "type": "string" }
+        }
+      }
+    },
+    "recommended_checks": { "type": "array", "items": { "type": "string" } },
+    "suggested_fix": { "type": "string" },
+    "limitations": { "type": "array", "items": { "type": "string" } },
+    "versions": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    }
+  }
+}

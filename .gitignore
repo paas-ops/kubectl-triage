@@ -1,0 +1,7 @@
+/kubectl-triage
+/dist/
+/coverage.out
+.DS_Store
+.env
+.env.*
+*.local
