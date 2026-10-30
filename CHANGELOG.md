@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased — M1 offline MVP
+
+- `import alertmanager|kubectl|prometheus|loki` with deterministic canonical output and
+  import-time credential scanning (exit code 4, nothing written on rejection).
+- Strict `incident.yaml` / `report.json` JSON Schema validation (embedded schemas, no external dependency).
+- `analyze` evidence normalization: `content_ref`, separate observed/collected timestamps,
+  stale (>15m) and clock-skew marks, `--max-evidence` trimming listed in report limitations.
+- Five deterministic fault classes (OOMKilled, CrashLoopBackOff, ImagePullBackOff, Pending,
+  release regression) with evidence citations, contradictions and confidence layering (rule-v0.2).
+- `report <dir>` re-renders an existing report without re-analysis.
+- `--redact strict|standard|off`; `--offline` vs `--model` mutual exclusion; exit codes 0/1/2/3/4.
+- 12 golden incident bundles (five classes x2 + missing + injection) with determinism,
+  schema and prompt-injection assertions.
+- CI: gofmt, build, vet, tests and darwin/linux amd64/arm64 cross-builds.
+
 ## v0.0.1 — 2026-10-30
 
 Initial repository skeleton.

@@ -3,9 +3,9 @@
 轻量、离线优先的 Kubernetes 事故诊断 CLI。开发者在本地对历史故障数据做一次可追溯的诊断，
 不依赖控制平面、不上传证据；企业版再把单次诊断升级为团队事故库、评测、审计与私有部署。
 
-> 当前为 **v0.0.1 初始化骨架**：`init` / `validate` / `analyze --offline` 可运行，规则覆盖
-> OOMKilled、ImagePullBackOff、CrashLoopBackOff、Pending 的签名匹配。正式评测前不得把结果
-> 作为生产决策唯一依据。
+> 当前为 **M1 离线 MVP**：`init` / `import` / `validate` / `analyze` / `report` 可用，
+> 覆盖五类故障的确定性规则、证据引用/反证/缺失说明，并有 12 个 golden 回归。模型模式（M2）
+> 与企业 `push`（M4）尚未实现。正式评测前不得把结果作为生产决策唯一依据。
 
 ## 快速开始
 
@@ -42,10 +42,11 @@ kubectl triage analyze /tmp/triage-demo
 | 命令 | 状态 |
 | --- | --- |
 | `init <dir>` | ✅ 生成最小可跑事故包 |
-| `validate <dir>` | ✅ schema/时间戳/敏感内容扫描 |
-| `analyze <dir> --offline` | ✅ 规则分析 + Markdown/JSON 报告 |
+| `validate <dir>` | ✅ JSON Schema 校验、RFC3339 时间、敏感内容扫描（`--redact strict\|standard\|off`） |
+| `analyze <dir>` | ✅ 五类故障规则分析 + Markdown/JSON 报告（`--format`/`--out`/`--max-evidence`/`--fail-on-missing`，退出码 0/1/2/3/4） |
+| `report <dir>` | ✅ 从已有 `report.json` 重新渲染，不重新分析 |
+| `import alertmanager/kubectl/prometheus/loki` | ✅ 导入时扫描凭据，命中退出码 4 |
 | `--model` / Ollama | ⏳ M2 |
-| `import alertmanager/kubectl/prometheus/loki` | ⏳ M1 |
 | `eval` | ⏳ M2 |
 | `push`（企业版） | ⏳ M4 |
 
@@ -61,6 +62,7 @@ kubectl triage analyze /tmp/triage-demo
 - [需求文档](docs/需求文档.md)：产品定位、CLI 交互、证据规范、开源/商业边界、指标与验收标准
 - [拆分计划](docs/拆分计划.md)：仓库拆分、模块结构、12 周里程碑、任务拆分、发布与度量计划
 - [ADR-002 契约口径](docs/adr/ADR-002-契约口径.md)：golden 基线、CLI 参数默认值等 6 项口径决策
+- [ADR-003 M1 实现口径](docs/adr/ADR-003-M1实现口径.md)：证据/content_ref、退出码、脱敏、schema 校验与 CI 门禁
 
 > 规划文档引用的 `CloudOps-Agent/创业商业方案.md` 属外部商业仓库，不随本仓库发布。
 
