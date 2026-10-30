@@ -122,6 +122,8 @@ kubectl-triage push ./incidents/2026-10-12-checkout-oom \
 ## 文档
 
 - 文档站：**https://paas-ops.github.io/kubectl-triage/**（静态站点，源码 [site/index.html](site/index.html)）
+- [项目文档](docs/PROJECT.md)：项目综合文档（定位、架构、契约、命令、安全、质量、里程碑、路线图）
+- [下一步工作](docs/next-steps.md)：v1.0 宣布条件、P0/P1/P2 待办、发布与回滚流程
 - [5 分钟快速开始](docs/quickstart.md)：安装、init、validate、analyze、读报告、退出码与常见问题
 - [安装与校验](docs/install.md)：Release 资产、sha256 / cosign / SBOM、Docker、go install、Homebrew
 - [Homebrew 现状与 tap bootstrap](docs/homebrew.md)：formula 资产、`HOMEBREW_TAP_GITHUB_TOKEN`、后续启用
