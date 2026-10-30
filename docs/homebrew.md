@@ -10,31 +10,32 @@
 | --- | --- |
 | GoReleaser 生成 Homebrew formula | ✅ 每个 `v*` Release 产出 `kubectl-triage.rb`（`brews` 配置） |
 | formula 作为 Release 资产上传 | ✅ 与 `tar.gz` / `checksums.txt` 同一 Release |
-| tap 仓库 `paas-ops/homebrew-tap` | ✅ 已建立（`Formula/kubectl-triage.rb`，`v0.3.0`） |
-| tap 自动推送（`HOMEBREW_TAP_GITHUB_TOKEN`） | ⏳ 未配置 secret（新版本目前手工同步） |
-| 用户命令 `brew install kubectl-triage` | ✅ 可用（`v0.3.0`） |
+| tap 仓库 `paas-ops/homebrew-tap` | ✅ 已建立（`Formula/kubectl-triage.rb`） |
+| formula 自动同步 | ✅ tap 仓库 `.github/workflows/sync-formula.yml`（每日 03:00 UTC + 手动 dispatch，无需 PAT） |
+| 用户命令 `brew install kubectl-triage` | ✅ 可用 |
 
 formula 由 GoReleaser 生成后在主仓库 Release 中提供（`skip_upload: true`），其中已包含各平台
 归档的 `url` 与 `sha256`；tap 已同步该 formula，不需要手写版本号。
 
-## 当前 tap 内容与手工同步（新版本）
+## formula 自动同步（无需 PAT）
 
-tap 当前包含 `v0.3.0` formula。在 `HOMEBREW_TAP_GITHUB_TOKEN` 配置前，之后每个版本由维护者手工同步：
+tap 仓库内置 `.github/workflows/sync-formula.yml`：
 
-1. 从新 Release 下载 `kubectl-triage.rb`；
-2. 核对 `version`、四个归档 URL 与 `sha256`（与 `checksums.txt` 一致）；
-3. 提交到 tap 的 `Formula/kubectl-triage.rb`：
+- **触发**：每日 03:00 UTC 定时任务；也可手动触发（`workflow_dispatch`，可指定 tag）；
+- **行为**：读取 `paas-ops/kubectl-triage` 的最新 Release（或指定 tag）→ 下载 `kubectl-triage.rb` →
+  与 `Formula/kubectl-triage.rb` 比较 → 有变化才提交；
+- **权限**：使用 tap 仓库自身的 `GITHUB_TOKEN`（读取公开主仓库 Release、写本仓库），
+  **不需要跨仓库 PAT / `HOMEBREW_TAP_GITHUB_TOKEN`**。
 
-   ```bash
-   git clone git@github.com:paas-ops/homebrew-tap.git
-   cd homebrew-tap
-   cp /path/to/kubectl-triage.rb Formula/kubectl-triage.rb
-   git add Formula/kubectl-triage.rb
-   git commit -m "kubectl-triage <version>"
-   git push
-   ```
+手动立即同步：
 
-4. `brew update && brew upgrade kubectl-triage` 验证。
+```bash
+gh workflow run sync-formula.yml -R paas-ops/homebrew-tap
+# 或指定版本
+gh workflow run sync-formula.yml -R paas-ops/homebrew-tap -f tag=v0.3.0
+```
+
+同步后用户侧：`brew update && brew upgrade kubectl-triage`。
 
 ## 用户安装命令（已可用）
 
@@ -86,26 +87,12 @@ brew untap paas-ops/homebrew-tap
 5. **更新 README/站点**：把 [docs/install.md](install.md) 与文档站中的 Homebrew 状态从
    “tap 待建立”改为“可用”（2026-10-30 已更新）。
 
-## 后续启用自动推送（可选）
+## 为什么不用跨仓库 PAT
 
-tap 建立并验证后，可让 release workflow 在每个 tag 自动更新 formula，不再手工复制：
-
-1. 生成 **fine-grained PAT**（或 classic PAT），对 `paas-ops/homebrew-tap` 授予
-   `Contents: Read and write`（classic PAT 需要 `repo` scope）。令牌只授权 tap 仓库，
-   不要给主仓库写权限。
-2. 在主仓库 `paas-ops/kubectl-triage` → Settings → Secrets and variables → Actions 新增
-   secret `HOMEBREW_TAP_GITHUB_TOKEN`。secret 不会出现在日志中；不要把它写进 workflow 文件。
-3. release-eng 需要做两处改动（当前尚未启用，以 ADR-005 D4 为准）：
-   - `.goreleaser.yaml` 的 `brews` 去掉 `skip_upload: true`（或在 workflow 中改用
-     `HOMEBREW_TAP_GITHUB_TOKEN` 环境变量），配置 `repository: owner: paas-ops, name: homebrew-tap`；
-   - `.github/workflows/release.yml` 在 GoReleaser 步骤注入
-     `HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}`。
-4. 打一个 dry-run tag 或使用 `workflow_dispatch` 验证：tap 中 `Formula/kubectl-triage.rb` 出现新
-   commit，`brew update && brew upgrade kubectl-triage` 能升级。若 secret 缺失，GoReleaser 应
-   跳过 tap 上传而不是让整个 Release 失败——formula 仍作为 Release 资产兜底。
-
-在没有完成第 1–5 步之前，不要把 `HOMEBREW_TAP_GITHUB_TOKEN` 当作发布前置条件：ADR-005 明确
-tap 属外部依赖，缺失不阻塞 Release 产物。
+另一种做法是让主仓库 release workflow 直接推送 tap，但跨仓库写入需要长期 PAT（
+`HOMEBREW_TAP_GITHUB_TOKEN`），带来密钥轮换与泄露面。当前方案把"拉取上游 Release + 写本仓库"
+放在 tap 自己的 workflow 里，用 GitHub 自动签发的仓库级 token 完成，权限最小、无长期密钥。
+主仓库 Release 仍将 formula 作为资产发布，作为兜底与审计来源。
 
 ## tap 建立前能否从 formula 资产安装？
 

@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased — M3.1 distribution hardening
+
+- Homebrew tap sync: the tap repository now runs a `sync-formula` workflow (daily schedule and
+  manual dispatch) that pulls the latest formula from releases using its own token, so no
+  cross-repository PAT is required.
+- Release verification: a manual `verify-release` workflow re-checks sha256 sums, the keyless
+  cosign certificate identity, SBOM coverage and the GHCR image signature for any published tag;
+  the release workflow also verifies its own signatures before finishing.
+- Evaluation set contract: `docs/eval-contract.md` documents the shared layout and JSON contract
+  for the formal 100-case benchmark used by the enterprise edition.
+
 ## v0.3.0 — 2026-10-30
 
 Beta distribution: signed release artifacts, container image, docs site and opt-in telemetry.

@@ -49,6 +49,13 @@ kubectl-triage version
 
 `<version>` 不含 `v` 前缀（tag `v0.3.0` → 文件名 `..._0.3.0_...`）。
 
+发布流水线在发布时自校验签名；此外仓库提供手动 [`verify-release`](../.github/workflows/verify-release.yml)
+workflow，可对任意已发布 tag 复验 sha256、cosign 证书身份、SBOM 覆盖与 GHCR 镜像签名：
+
+```bash
+gh workflow run verify-release.yml -R paas-ops/kubectl-triage -f tag=v0.3.0
+```
+
 ### 2.1 下载
 
 以 `v0.3.0` / macOS arm64 为例，按需替换 `VERSION` / `OS` / `ARCH`：
@@ -189,8 +196,8 @@ brew update && brew upgrade kubectl-triage
 brew uninstall kubectl-triage
 ```
 
-后续版本的 formula 目前由维护者手工同步（下载 Release 资产 `kubectl-triage.rb` → 提交到 tap 的
-`Formula/`）；自动推送待配置 `HOMEBREW_TAP_GITHUB_TOKEN`。同步与审阅要点见
+后续版本的 formula 由 tap 仓库的 `sync-formula` workflow 自动同步（每日 03:00 UTC，也可手动
+`gh workflow run sync-formula.yml -R paas-ops/homebrew-tap`），无需跨仓库 PAT。细节见
 [docs/homebrew.md](homebrew.md)。
 
 ## 6. 验证安装

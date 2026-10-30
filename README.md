@@ -47,7 +47,7 @@ kubectl triage analyze /tmp/triage-demo
 | 源码（Go 1.24+） | `go install github.com/paas-ops/kubectl-triage/cmd/kubectl-triage@latest` | ✅ 立即可用 |
 | Release 二进制 | `kubectl-triage_<version>_<os>_<arch>.tar.gz`（darwin/linux × amd64/arm64） | ✅ `v0.3.0` 起 |
 | Docker / GHCR | `docker run --rm ghcr.io/paas-ops/kubectl-triage:v0.3.0 version` | ✅ `v0.3.0` 起 |
-| Homebrew | `brew tap paas-ops/homebrew-tap && brew install kubectl-triage` | ✅ tap 已建立（v0.3.0 formula；新版本手工同步） |
+| Homebrew | `brew tap paas-ops/homebrew-tap && brew install kubectl-triage` | ✅ tap 已建立（formula 自动同步） |
 
 - 每个 Release 资产提供 sha256（`checksums.txt`）、cosign keyless 签名（`.sig` / `.pem`）与
   CycloneDX SBOM（`*.cdx.json`）；校验步骤见 [docs/install.md](docs/install.md)。
@@ -67,7 +67,7 @@ kubectl triage analyze /tmp/triage-demo
 | `--model`（Ollama / OpenAI-compatible） | ✅ 可选模型模式，默认关闭；预算/超时/轮次，失败降级退出码 3 |
 | `eval <dir>` | ✅ 本地评测（Top1/Top3/缺失/注入/降级；`--json`、`--now` 复现 golden） |
 | `telemetry status\|enable\|disable` | ✅ 匿名遥测 opt-in，默认关闭；字段白名单，绝不采集事故内容 |
-| 预编译 / 签名 / SBOM / Docker / Homebrew | ✅ `v0.3.0` tag 触发 release workflow 生成；Homebrew tap 已建立（新版本手工同步） |
+| 预编译 / 签名 / SBOM / Docker / Homebrew | ✅ `v0.3.0` tag 触发 release workflow 生成；Homebrew formula 由 tap workflow 自动同步 |
 | `push`（企业版） | ⏳ M4 |
 
 ## 离线、安全与遥测
@@ -79,6 +79,7 @@ kubectl triage analyze /tmp/triage-demo
 - **输入安全**：导入/校验时扫描常见凭据模式，报告不回显密钥；模型输出经 schema 校验、证据引用闭合与
   文本中和后才进入报告。
 - **供应链可校验**：sha256 + cosign keyless 签名 + CycloneDX SBOM；容器镜像以 digest 签名、以 nonroot 运行。
+  发布流水线在发布时自校验签名，另可 `gh workflow run verify-release.yml` 手动复验任意已发布 tag。
 - **遥测默认关闭**：不发送任何数据；显式 `telemetry enable` 后仅上报 10 个白名单字段
   （版本 / OS / 架构 / 模式 / 耗时 / 证据条数等），绝不采集集群名、命名空间、告警名、日志或证据正文、
   模型 key、文件路径；端点由用户配置，未配置则丢弃。`KUBECTL_TRIAGE_TELEMETRY=off` 可强制关闭。
@@ -94,6 +95,7 @@ kubectl triage analyze /tmp/triage-demo
 - [安全与数据流](docs/security.md)：只读/网络边界、数据流图、遥测隐私、权限清单、漏洞上报
 - [模型模式](docs/model.md)：Ollama / OpenAI-compatible 配置、预算、降级与安全边界
 - [本地评测](docs/eval.md)：eval 用法、评分口径、JSON 契约与 CI 示例
+- [评测集契约](docs/eval-contract.md)：正式 100 例评测集的目录/数据契约与企业版共用 schema
 - [企业试点](docs/pilot.md)：试点资格、28 天流程、验收口径与申请入口
 - [ADR-005 M3 实现口径](docs/adr/ADR-005-M3实现口径.md)：发布产物、签名/SBOM、Docker/Homebrew、文档站、遥测
 - [ADR-002 契约口径](docs/adr/ADR-002-契约口径.md) · [ADR-003 M1](docs/adr/ADR-003-M1实现口径.md) ·

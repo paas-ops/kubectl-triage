@@ -187,7 +187,7 @@ kubectl-triage version</code></pre>
           <p><strong>校验供应链：</strong>下载 <code>checksums.txt</code> 后先做 sha256 校验，再用
           <code>cosign verify-blob</code> 验证 keyless 签名，SBOM 为每个归档同名的 <code>*.cdx.json</code>。</p>
           <p><strong>Homebrew tap 已建立：</strong><code>brew tap paas-ops/homebrew-tap</code> 后安装；
-          formula 同时作为 Release 资产发布（<code>kubectl-triage.rb</code>），详细步骤见文档。</p>
+          formula 随新版本自动同步，同时作为 Release 资产发布（<code>kubectl-triage.rb</code>），详细步骤见文档。</p>
         </div>
 
         <div class="link-row">
