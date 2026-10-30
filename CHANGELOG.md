@@ -1,5 +1,22 @@
 # Changelog
 
+## v0.3.0 — 2026-10-30
+
+Beta distribution: signed release artifacts, container image, docs site and opt-in telemetry.
+
+- Release engineering: GoReleaser v2.15.4 builds darwin/linux x amd64/arm64 archives with
+  sha256 checksums, cosign keyless signatures, CycloneDX SBOMs and a generated Homebrew
+  formula; a `release` workflow runs on tag pushes; CI gains `release-check` and
+  `docker-build` jobs.
+- Container image: `ghcr.io/paas-ops/kubectl-triage:v0.3.0` and `:latest`, distroless and
+  non-root, signed by digest.
+- Docs: GitHub Pages static site, install/homebrew/quickstart/security/pilot guides and a
+  pilot-request issue template.
+- Telemetry: opt-in anonymous events, disabled by default; fixed 10-field whitelist, no
+  incident content, cluster, namespace, paths or keys; `telemetry status|enable|disable`,
+  bounded 2s best-effort delivery.
+- No report schema changes; offline behavior unchanged.
+
 ## v0.2.0 — 2026-10-30
 
 Optional model providers and the local evaluation harness.
