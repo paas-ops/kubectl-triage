@@ -1,0 +1,90 @@
+{
+  "schema_version": "1.0",
+  "incident": {
+    "id": "oom-02",
+    "alertname": "KubePodOOMKilled",
+    "severity": "critical",
+    "cluster": "prod-shanghai",
+    "namespace": "checkout",
+    "workload": "checkout-api",
+    "observed_at": "2026-10-30T13:50:00Z",
+    "collected_at": "2026-10-30T13:50:05Z",
+    "source": "kubectl"
+  },
+  "generated_at": "2000-01-01T00:00:00Z",
+  "mode": "offline",
+  "degraded": false,
+  "summary": "容器因内存不足被 OOMKilled，需核对 memory limit 与工作集峰值",
+  "evidence": [
+    {
+      "id": "ev-001",
+      "source": "k8s.events",
+      "observed_at": "2026-10-30T13:49:58Z",
+      "collected_at": "2026-10-30T13:50:05Z",
+      "summary": "Warning OOMKilled: Container checkout-api was OOMKilled (exitCode=137)（Pod checkout-api-5b7c-qq1wz）",
+      "content_ref": "k8s/events.json#items/0",
+      "query": "kubectl get events -n checkout -o json",
+      "redaction": "strict",
+      "sha256": "sha256:fab5adb079457d6a9d1825677b909093b7d0d8d9a0d5434ca94e851686373797",
+      "stale": false
+    },
+    {
+      "id": "ev-002",
+      "source": "k8s.events",
+      "observed_at": "2026-10-30T13:49:59Z",
+      "collected_at": "2026-10-30T13:50:05Z",
+      "summary": "Warning OOMKilling: Memory cgroup out of memory: Killed process 4321 (checkout-api)（Pod checkout-api-5b7c-qq1wz）",
+      "content_ref": "k8s/events.json#items/1",
+      "query": "kubectl get events -n checkout -o json",
+      "redaction": "strict",
+      "sha256": "sha256:fab5adb079457d6a9d1825677b909093b7d0d8d9a0d5434ca94e851686373797",
+      "stale": false
+    }
+  ],
+  "hypotheses": [
+    {
+      "rank": 1,
+      "statement": "容器因内存不足被 OOMKilled，需核对 memory limit 与工作集峰值",
+      "confidence": "mid",
+      "evidence_ids": [
+        "ev-001",
+        "ev-002"
+      ],
+      "contradictions": []
+    }
+  ],
+  "missing_data": [
+    {
+      "source": "prometheus.metrics",
+      "reason": "事故包缺少 metrics/ 指标数据",
+      "next_step": "导出故障前后 30 分钟的 Prometheus query_range 结果到 metrics/（脱敏后）"
+    },
+    {
+      "source": "logs",
+      "reason": "事故包缺少 logs/ 日志摘录",
+      "next_step": "导出故障时间窗内相关 Pod 的日志到 logs/（脱敏后）"
+    },
+    {
+      "source": "changes",
+      "reason": "事故包缺少 changes/ 发布变更记录",
+      "next_step": "补充发布/镜像/commit 变更记录到 changes/rollout.json"
+    }
+  ],
+  "recommended_checks": [
+    "核对容器 memory limit 与最近一次发布是否降低 limit",
+    "查看同一节点其他 Pod 的内存压力与驱逐事件",
+    "对比故障前 30 分钟容器 working set 与 limit"
+  ],
+  "suggested_fix": "只读建议：确认峰值后评估提高 memory limit 或修复内存泄漏；不自动修改工作负载。",
+  "limitations": [
+    "离线规则版本 rule-v0.2；未接入模型，不读取集群、不访问网络。",
+    "所有建议均为只读，不自动执行任何修复。",
+    "报告仅基于事故包内证据，未核验集群实时状态。",
+    "证据内容按不可执行数据处理：日志与事件中的指令性文本不会被执行或外传。"
+  ],
+  "versions": {
+    "cli": "dev",
+    "model": "none",
+    "rules": "rule-v0.2"
+  }
+}

@@ -1,0 +1,118 @@
+{
+  "schema_version": "1.0",
+  "incident": {
+    "id": "release-01",
+    "alertname": "KubeHTTP5xxSpike",
+    "severity": "critical",
+    "cluster": "prod-shanghai",
+    "namespace": "checkout",
+    "workload": "checkout-api",
+    "observed_at": "2026-10-30T13:50:00Z",
+    "collected_at": "2026-10-30T13:50:05Z",
+    "source": "alertmanager"
+  },
+  "generated_at": "2000-01-01T00:00:00Z",
+  "mode": "offline",
+  "degraded": false,
+  "summary": "故障窗口与近期发布变更重叠（镜像/ReplicaSet 变化），需核对变更内容与回滚点",
+  "evidence": [
+    {
+      "id": "ev-001",
+      "source": "changes",
+      "observed_at": "2026-10-30T13:49:57Z",
+      "collected_at": "2026-10-30T13:50:05Z",
+      "summary": "发布变更记录 changes/rollout.json：workload=checkout-api，revision=43，镜像 registry.prod/checkout-api:v1.8.4 → registry.prod/checkout-api:v1.9.0，status=completed",
+      "content_ref": "changes/rollout.json",
+      "query": "ci/cd rollout history",
+      "redaction": "strict",
+      "sha256": "sha256:3d9952ae741bec5fb80d9a02e9520fee88c6852e1f5a5c2f2b7c23f0cbd324fd",
+      "stale": false
+    },
+    {
+      "id": "ev-002",
+      "source": "k8s.events",
+      "observed_at": "2026-10-30T13:49:57Z",
+      "collected_at": "2026-10-30T13:50:05Z",
+      "summary": "Normal ScalingReplicaSet: Scaled up replica set checkout-api-7c8d9 to 3（Deployment checkout-api）",
+      "content_ref": "k8s/events.json#items/0",
+      "query": "kubectl get events -n checkout -o json",
+      "redaction": "strict",
+      "sha256": "sha256:6523be7f8f07e7d0b2d8527ba60a1278d389b20b3d1b7a534012bcb2e049186b",
+      "stale": false
+    },
+    {
+      "id": "ev-003",
+      "source": "k8s.events",
+      "observed_at": "2026-10-30T13:49:58Z",
+      "collected_at": "2026-10-30T13:50:05Z",
+      "summary": "Normal Pulled: Successfully pulled image registry.prod/checkout-api:v1.9.0（Pod checkout-api-7c8d9-lm4n2）",
+      "content_ref": "k8s/events.json#items/1",
+      "query": "kubectl get events -n checkout -o json",
+      "redaction": "strict",
+      "sha256": "sha256:6523be7f8f07e7d0b2d8527ba60a1278d389b20b3d1b7a534012bcb2e049186b",
+      "stale": false
+    },
+    {
+      "id": "ev-005",
+      "source": "logs",
+      "observed_at": "2026-10-30T13:49:58Z",
+      "collected_at": "2026-10-30T13:50:05Z",
+      "summary": "日志摘录 logs/app.log：2026-10-30T13:49:58Z INFO starting checkout-api image=registry.prod/checkout-api:v1.9.0",
+      "content_ref": "logs/app.log#L1",
+      "query": "loki query_range",
+      "redaction": "strict",
+      "sha256": "sha256:b5c9da7aeaac4b4499a17eb1430f4b086dae72c11e1f697810935b3e37098eb8",
+      "stale": false
+    },
+    {
+      "id": "ev-004",
+      "source": "k8s.pods",
+      "observed_at": "2026-10-30T13:50:00Z",
+      "collected_at": "2026-10-30T13:50:05Z",
+      "summary": "Kubernetes 资源快照 k8s/pods.yaml（1 个对象：Pod×1）",
+      "content_ref": "k8s/pods.yaml",
+      "query": "kubectl get pods -n checkout -o yaml",
+      "redaction": "strict",
+      "sha256": "sha256:60c2d60606426ac4f4bfc9fa5924154a33bb93bc9bb49f18f6f0a196a008c50b",
+      "stale": false
+    }
+  ],
+  "hypotheses": [
+    {
+      "rank": 1,
+      "statement": "故障窗口与近期发布变更重叠（镜像/ReplicaSet 变化），需核对变更内容与回滚点",
+      "confidence": "high",
+      "evidence_ids": [
+        "ev-002",
+        "ev-003",
+        "ev-004",
+        "ev-005"
+      ],
+      "contradictions": []
+    }
+  ],
+  "missing_data": [
+    {
+      "source": "prometheus.metrics",
+      "reason": "事故包缺少 metrics/ 指标数据",
+      "next_step": "导出故障前后 30 分钟的 Prometheus query_range 结果到 metrics/（脱敏后）"
+    }
+  ],
+  "recommended_checks": [
+    "核对发布变更的镜像、commit 与配置差异",
+    "对比发布前后错误率、延迟与重启次数",
+    "确认回滚点与回滚影响范围"
+  ],
+  "suggested_fix": "只读建议：评估回滚或修正发布内容；只读核对，不自动执行回滚。",
+  "limitations": [
+    "离线规则版本 rule-v0.2；未接入模型，不读取集群、不访问网络。",
+    "所有建议均为只读，不自动执行任何修复。",
+    "报告仅基于事故包内证据，未核验集群实时状态。",
+    "证据内容按不可执行数据处理：日志与事件中的指令性文本不会被执行或外传。"
+  ],
+  "versions": {
+    "cli": "dev",
+    "model": "none",
+    "rules": "rule-v0.2"
+  }
+}

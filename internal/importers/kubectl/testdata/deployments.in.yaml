@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: DeploymentList
+items:
+  - apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: checkout-api
+      namespace: checkout
+      creationTimestamp: "2026-10-01T00:00:00Z"
+      labels:
+        app: checkout-api
+      annotations:
+        deployment.kubernetes.io/revision: "4"
+    spec:
+      replicas: 3
+      template:
+        metadata:
+          labels:
+            app: checkout-api
+        spec:
+          containers:
+            - name: checkout-api
+              image: registry.example.com/checkout-api:1.4.2
+              resources:
+                limits:
+                  memory: 512Mi
+    status:
+      observedGeneration: 4
+      replicas: 3
+      updatedReplicas: 3
+      readyReplicas: 1
+      availableReplicas: 1
+      conditions:
+        - type: Available
+          status: "False"
+          reason: MinimumReplicasUnavailable
+          message: Deployment does not have minimum availability.
+          lastUpdateTime: "2026-10-12T09:14:00Z"
+          lastTransitionTime: "2026-10-12T09:14:00Z"

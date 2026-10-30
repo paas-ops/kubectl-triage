@@ -1,0 +1,23 @@
+{
+  "status": "success",
+  "data": {
+    "resultType": "streams",
+    "result": [
+      {
+        "stream": {"app": "checkout-api", "namespace": "checkout", "pod": "checkout-api-7d9f"},
+        "values": [
+          ["1793000030000000000", "2026-10-12T09:14:02Z ERROR container terminated: OOMKilled (exitCode=137)\n2026-10-12T09:14:03Z INFO restarting container"],
+          ["1793000010000000000", "2026-10-12T09:13:50Z INFO starting checkout-api"]
+        ]
+      },
+      {
+        "stream": {"app": "checkout-api", "namespace": "checkout", "pod": "checkout-api-5c8b"},
+        "values": [
+          ["1793000020000000000", "2026-10-12T09:13:55Z WARN memory usage 498MiB / 512MiB"],
+          ["1793000020000000000", "2026-10-12T09:13:55Z INFO still waiting for database"]
+        ]
+      }
+    ]
+  },
+  "stats": {"summary": {"totalLinesProcessed": 4}}
+}

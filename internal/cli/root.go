@@ -2,6 +2,7 @@
 package cli
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -10,6 +11,8 @@ import (
 
 	"github.com/paas-ops/kubectl-triage/internal/analyze"
 	"github.com/paas-ops/kubectl-triage/internal/bundle"
+	"github.com/paas-ops/kubectl-triage/internal/redact"
+	"github.com/paas-ops/kubectl-triage/pkg/schema"
 	"github.com/spf13/cobra"
 )
 
@@ -22,6 +25,16 @@ type ExitError struct {
 func (e *ExitError) Error() string { return e.Err.Error() }
 func (e *ExitError) Unwrap() error { return e.Err }
 
+// exitCodeFor maps bundle validation failures to the documented exit codes:
+// 4 for security failures, 1 for every other input/configuration error.
+func exitCodeFor(err error) int {
+	var security *bundle.SecurityError
+	if errors.As(err, &security) {
+		return 4
+	}
+	return 1
+}
+
 func NewRoot(version, commit, date string) *cobra.Command {
 	root := &cobra.Command{
 		Use:           "kubectl-triage",
@@ -33,8 +46,10 @@ func NewRoot(version, commit, date string) *cobra.Command {
 	root.AddCommand(
 		newVersionCmd(version, commit, date),
 		newInitCmd(),
+		newImportCmd(),
 		newValidateCmd(),
 		newAnalyzeCmd(version),
+		newReportCmd(),
 	)
 	return root
 }
@@ -81,84 +96,147 @@ func newInitCmd() *cobra.Command {
 }
 
 func newValidateCmd() *cobra.Command {
-	return &cobra.Command{
+	var redactMode string
+	cmd := &cobra.Command{
 		Use:   "validate <dir>",
 		Short: "Validate an incident bundle (schema, timestamps, sensitive content)",
-		Args:  cobra.ExactArgs(1),
+		Long: "validate checks incident.yaml against the public schema, verifies timestamps and scans evidence files\n" +
+			"for credential-like content. --redact strict (default) rejects the bundle with exit code 4 when anything\n" +
+			"is found; --redact standard accepts it and scrubs matches before analysis; --redact off disables checking.",
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			dir := args[0]
-			b, err := bundle.Load(dir)
+			mode, err := redact.ParseMode(redactMode)
 			if err != nil {
 				return &ExitError{Code: 1, Err: err}
 			}
-			if err := b.Validate(); err != nil {
+			b, err := bundle.Load(args[0])
+			if err != nil {
 				return &ExitError{Code: 1, Err: err}
+			}
+			b.RedactMode = mode
+			if err := b.Validate(); err != nil {
+				return &ExitError{Code: exitCodeFor(err), Err: err}
 			}
 			files, _ := b.WalkTextFiles()
 			fmt.Fprintf(cmd.OutOrStdout(), "OK: %s (%s/%s, %d evidence files)\n",
 				b.Incident.ID, b.Incident.Cluster, b.Incident.Namespace, len(files))
+			if findings := b.Findings(); len(findings) > 0 {
+				fmt.Fprintf(cmd.OutOrStdout(), "warning: %d sensitive-content finding(s) will be scrubbed before analysis (--redact=%s)\n",
+					len(findings), mode)
+			}
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&redactMode, "redact", "strict", "strict|standard|off: sensitive-content handling")
+	return cmd
 }
 
 func newAnalyzeCmd(version string) *cobra.Command {
 	var (
 		offline       bool
 		model         string
+		modelURL      string
+		modelName     string
 		format        string
+		out           string
+		maxEvidence   int
+		redactMode    string
 		failOnMissing bool
 	)
 	cmd := &cobra.Command{
 		Use:   "analyze <dir>",
 		Short: "Analyze an incident bundle and write report.md/report.json",
-		Args:  cobra.ExactArgs(1),
+		Long: "analyze runs the deterministic offline rules over a validated incident bundle and writes the report.\n" +
+			"--offline is a hard no-network guarantee and conflicts with --model. --model values other than none\n" +
+			"request model mode; this build has no model provider, so it writes a degraded offline report and exits 3.\n" +
+			"--out accepts either a directory (report.json/report.md are written inside it) or a single file\n" +
+			"path ending in .json/.md (only when --format selects a single format); it defaults to the bundle directory.",
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if model != "" {
-				return &ExitError{Code: 3, Err: errors.New("model mode is not implemented in v0.0.1; use --offline")}
-			}
-			switch format {
-			case "md", "json", "both":
-			default:
-				return &ExitError{Code: 1, Err: fmt.Errorf("invalid --format %q (want md|json|both)", format)}
-			}
-			b, err := bundle.Load(args[0])
+			dir := args[0]
+			mode, err := redact.ParseMode(redactMode)
 			if err != nil {
 				return &ExitError{Code: 1, Err: err}
 			}
-			if err := b.Validate(); err != nil {
+			if err := validateFormat(format); err != nil {
 				return &ExitError{Code: 1, Err: err}
 			}
-			rep, err := analyze.Analyze(b, version)
+			model = strings.TrimSpace(model)
+			modelRequested := model != "" && model != "none"
+			if offline && modelRequested {
+				return &ExitError{Code: 1, Err: fmt.Errorf("--offline and --model %q are mutually exclusive; use one of them", model)}
+			}
+			// --model-url/--model-name are accepted for forward compatibility;
+			// M1 has no model provider so they do not affect the report.
+			_ = modelURL
+			_ = modelName
+
+			b, err := bundle.Load(dir)
+			if err != nil {
+				return &ExitError{Code: 1, Err: err}
+			}
+			b.RedactMode = mode
+			if err := b.Validate(); err != nil {
+				return &ExitError{Code: exitCodeFor(err), Err: err}
+			}
+
+			rep, err := analyze.Analyze(b, version, analyze.Options{MaxEvidence: maxEvidence})
 			if err != nil {
 				return &ExitError{Code: 1, Err: err}
 			}
 			rep.Mode = "offline"
-			if !offline {
+			if modelRequested {
 				rep.Degraded = true
-				rep.Limitations = append(rep.Limitations, "请求了非离线模式，但 v0.0.1 仅实现规则分析，报告按降级处理。")
+				rep.Limitations = append(rep.Limitations, "模型模式未实现，已回退离线规则")
 			}
-			switch format {
-			case "md":
-				err = rep.WriteMarkdown(filepath.Join(args[0], "report.md"))
-			case "json":
-				err = rep.WriteJSON(filepath.Join(args[0], "report.json"))
-			default:
-				err = rep.Write(args[0])
+			normalizeReport(rep)
+
+			data, err := json.Marshal(rep)
+			if err != nil {
+				return &ExitError{Code: 1, Err: fmt.Errorf("encode report: %w", err)}
 			}
+			if err := schema.ValidateReport(data); err != nil {
+				return &ExitError{Code: 1, Err: fmt.Errorf("generated report failed schema validation: %w", err)}
+			}
+
+			written, err := writeReport(rep, dir, format, out)
 			if err != nil {
 				return &ExitError{Code: 1, Err: err}
 			}
-			fmt.Fprintf(cmd.OutOrStdout(), "report: %s\nsummary: %s\n", filepath.Join(args[0], "report.md"), strings.TrimSpace(rep.Summary))
-			if failOnMissing && len(rep.Hypotheses) == 0 {
-				return &ExitError{Code: 2, Err: errors.New("no cited hypothesis; see report.json missing_data")}
+			fmt.Fprintf(cmd.OutOrStdout(), "report: %s\n", strings.Join(written, ", "))
+			if summary := strings.TrimSpace(rep.Summary); summary != "" {
+				fmt.Fprintf(cmd.OutOrStdout(), "summary: %s\n", summary)
+			}
+
+			// An explicit CI gate wins over the model-fallback signal when both
+			// apply, so --fail-on-missing always reports 2.
+			if failOnMissing && (len(rep.MissingData) > 0 || len(rep.Hypotheses) == 0) {
+				return &ExitError{Code: 2, Err: fmt.Errorf("evidence is missing (%d missing item(s), %d hypothesis(es)); see %s",
+					len(rep.MissingData), len(rep.Hypotheses), "report.json missing_data")}
+			}
+			if modelRequested {
+				return &ExitError{Code: 3, Err: fmt.Errorf("model mode is unavailable in this build; wrote an offline report with degraded=true")}
 			}
 			return nil
 		},
 	}
-	cmd.Flags().BoolVar(&offline, "offline", true, "disable all network access")
-	cmd.Flags().StringVar(&model, "model", "", "model provider (not implemented in v0.0.1)")
+	cmd.Flags().BoolVar(&offline, "offline", false, "hard no-network guarantee (mutually exclusive with --model)")
+	cmd.Flags().StringVar(&model, "model", "none", "model provider: none|ollama|openai-compatible (M1 has no provider)")
+	cmd.Flags().StringVar(&modelURL, "model-url", "", "OpenAI-compatible base URL (reserved for M2)")
+	cmd.Flags().StringVar(&modelName, "model-name", "", "model name (reserved for M2)")
 	cmd.Flags().StringVar(&format, "format", "both", "md|json|both")
-	cmd.Flags().BoolVar(&failOnMissing, "fail-on-missing", false, "exit 2 when no hypothesis is produced")
+	cmd.Flags().StringVar(&out, "out", "", "output directory, or a single .json/.md file with --format json|md")
+	cmd.Flags().IntVar(&maxEvidence, "max-evidence", 200, "maximum evidence items passed to the analyzer")
+	cmd.Flags().StringVar(&redactMode, "redact", "strict", "strict|standard|off: sensitive-content handling")
+	cmd.Flags().BoolVar(&failOnMissing, "fail-on-missing", false, "exit 2 when evidence is missing or no hypothesis is produced")
 	return cmd
+}
+
+func validateFormat(format string) error {
+	switch format {
+	case "md", "json", "both":
+		return nil
+	default:
+		return fmt.Errorf("invalid --format %q (want md|json|both)", format)
+	}
 }

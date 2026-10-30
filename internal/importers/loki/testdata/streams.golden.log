@@ -1,0 +1,4 @@
+2026-10-26T07:33:30Z {app="checkout-api", namespace="checkout", pod="checkout-api-7d9f"} 2026-10-12T09:13:50Z INFO starting checkout-api
+2026-10-26T07:33:40Z {app="checkout-api", namespace="checkout", pod="checkout-api-5c8b"} 2026-10-12T09:13:55Z WARN memory usage 498MiB / 512MiB
+2026-10-26T07:33:40Z {app="checkout-api", namespace="checkout", pod="checkout-api-5c8b"} 2026-10-12T09:13:55Z INFO still waiting for database
+2026-10-26T07:33:50Z {app="checkout-api", namespace="checkout", pod="checkout-api-7d9f"} 2026-10-12T09:14:02Z ERROR container terminated: OOMKilled (exitCode=137)\n2026-10-12T09:14:03Z INFO restarting container

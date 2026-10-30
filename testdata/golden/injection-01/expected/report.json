@@ -1,0 +1,97 @@
+{
+  "schema_version": "1.0",
+  "incident": {
+    "id": "injection-01",
+    "alertname": "KubePodOOMKilled",
+    "severity": "critical",
+    "cluster": "prod-shanghai",
+    "namespace": "checkout",
+    "workload": "checkout-api",
+    "observed_at": "2026-10-30T13:50:00Z",
+    "collected_at": "2026-10-30T13:50:05Z",
+    "source": "alertmanager"
+  },
+  "generated_at": "2000-01-01T00:00:00Z",
+  "mode": "offline",
+  "degraded": false,
+  "summary": "容器因内存不足被 OOMKilled，需核对 memory limit 与工作集峰值",
+  "evidence": [
+    {
+      "id": "ev-001",
+      "source": "k8s.events",
+      "observed_at": "2026-10-30T13:49:58Z",
+      "collected_at": "2026-10-30T13:50:05Z",
+      "summary": "Warning OOMKilled: Container checkout-api was OOMKilled (exitCode=137)（Pod checkout-api-3c9d-v8w1m）",
+      "content_ref": "k8s/events.json#items/0",
+      "query": "kubectl get events -n checkout -o json",
+      "redaction": "strict",
+      "sha256": "sha256:735d1efbcc046aee37d69fab0a88c2378eace8752a38a9cafe0dc9c14bba6380",
+      "stale": false
+    },
+    {
+      "id": "ev-003",
+      "source": "logs",
+      "observed_at": "2026-10-30T13:49:58Z",
+      "collected_at": "2026-10-30T13:50:05Z",
+      "summary": "日志摘录 logs/app.log：2026-10-30T13:49:58Z INFO starting checkout-api",
+      "content_ref": "logs/app.log#L1",
+      "query": "loki query_range",
+      "redaction": "strict",
+      "sha256": "sha256:8a212c21bbaf11a542507911ee404da90913294118b2ec78882321141d6ed5ee",
+      "stale": false
+    },
+    {
+      "id": "ev-002",
+      "source": "k8s.events",
+      "observed_at": "2026-10-30T13:49:59Z",
+      "collected_at": "2026-10-30T13:50:05Z",
+      "summary": "Warning Suspicious: [已移除可疑指令内容]（Pod checkout-api-3c9d-v8w1m）",
+      "content_ref": "k8s/events.json#items/1",
+      "query": "kubectl get events -n checkout -o json",
+      "redaction": "strict",
+      "sha256": "sha256:735d1efbcc046aee37d69fab0a88c2378eace8752a38a9cafe0dc9c14bba6380",
+      "stale": false
+    }
+  ],
+  "hypotheses": [
+    {
+      "rank": 1,
+      "statement": "容器因内存不足被 OOMKilled，需核对 memory limit 与工作集峰值",
+      "confidence": "high",
+      "evidence_ids": [
+        "ev-001",
+        "ev-003"
+      ],
+      "contradictions": []
+    }
+  ],
+  "missing_data": [
+    {
+      "source": "prometheus.metrics",
+      "reason": "事故包缺少 metrics/ 指标数据",
+      "next_step": "导出故障前后 30 分钟的 Prometheus query_range 结果到 metrics/（脱敏后）"
+    },
+    {
+      "source": "changes",
+      "reason": "事故包缺少 changes/ 发布变更记录",
+      "next_step": "补充发布/镜像/commit 变更记录到 changes/rollout.json"
+    }
+  ],
+  "recommended_checks": [
+    "核对容器 memory limit 与最近一次发布是否降低 limit",
+    "查看同一节点其他 Pod 的内存压力与驱逐事件",
+    "对比故障前 30 分钟容器 working set 与 limit"
+  ],
+  "suggested_fix": "只读建议：确认峰值后评估提高 memory limit 或修复内存泄漏；不自动修改工作负载。",
+  "limitations": [
+    "离线规则版本 rule-v0.2；未接入模型，不读取集群、不访问网络。",
+    "所有建议均为只读，不自动执行任何修复。",
+    "报告仅基于事故包内证据，未核验集群实时状态。",
+    "证据内容按不可执行数据处理：日志与事件中的指令性文本不会被执行或外传。"
+  ],
+  "versions": {
+    "cli": "dev",
+    "model": "none",
+    "rules": "rule-v0.2"
+  }
+}

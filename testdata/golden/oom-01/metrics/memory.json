@@ -1,0 +1,16 @@
+{
+  "status": "success",
+  "data": {
+    "resultType": "matrix",
+    "result": [
+      {
+        "metric": {"__name__": "container_memory_working_set_bytes", "pod": "checkout-api-7d9f-c4k2p", "namespace": "checkout"},
+        "values": [[1793368140, "486MiB"], [1793368170, "501MiB"], [1793368200, "512MiB"]]
+      },
+      {
+        "metric": {"__name__": "kube_pod_container_status_last_terminated_reason", "pod": "checkout-api-7d9f-c4k2p", "reason": "OOMKilled"},
+        "values": [[1793368200, "1"]]
+      }
+    ]
+  }
+}

@@ -1,0 +1,4 @@
+2026-10-30T13:49:58Z INFO starting checkout-api version=1.8.4
+2026-10-30T13:49:59Z WARN memory usage 498MiB / 512MiB
+2026-10-30T13:50:00Z ERROR container terminated: OOMKilled (exitCode=137)
+2026-10-30T13:50:01Z INFO restarting container

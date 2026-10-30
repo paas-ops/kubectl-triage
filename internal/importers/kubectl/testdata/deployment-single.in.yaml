@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: checkout-api-worker
+  namespace: checkout
+spec:
+  replicas: 1
+  template:
+    spec:
+      containers:
+        - name: worker
+          image: registry.example.com/checkout-worker:1.4.2
+status:
+  readyReplicas: 1
+  updatedReplicas: 1
+  observedGeneration: 2
+  conditions:
+    - type: Available
+      status: "True"

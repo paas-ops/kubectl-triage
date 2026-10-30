@@ -1,0 +1,17 @@
+{
+  "status": "firing",
+  "alerts": [
+    {
+      "status": "firing",
+      "labels": {
+        "alertname": "KubePodNotScheduled",
+        "namespace": "checkout",
+        "pod": "checkout-api-4d5e-t7y2u"
+      },
+      "annotations": {
+        "summary": "Pod checkout-api-4d5e-t7y2u is pending for more than 5 minutes"
+      },
+      "startsAt": "2026-10-30T13:49:59Z"
+    }
+  ]
+}

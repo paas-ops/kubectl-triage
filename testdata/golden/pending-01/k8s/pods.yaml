@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: List
+items:
+  - apiVersion: v1
+    kind: Pod
+    metadata:
+      name: checkout-api-4d5e-t7y2u
+      namespace: checkout
+    spec:
+      containers:
+        - name: checkout-api
+          image: registry.prod/checkout-api:v1.9.0
+          resources:
+            requests:
+              cpu: "4"
+              memory: 8Gi
+    status:
+      phase: Pending
+      conditions:
+        - type: PodScheduled
+          status: "False"
+          reason: Unschedulable

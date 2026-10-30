@@ -1,0 +1,17 @@
+{
+  "status": "firing",
+  "alerts": [
+    {
+      "status": "firing",
+      "labels": {
+        "alertname": "KubePodOOMKilled",
+        "namespace": "checkout",
+        "pod": "checkout-api-7d9f-c4k2p"
+      },
+      "annotations": {
+        "summary": "Pod checkout-api-7d9f-c4k2p was OOMKilled"
+      },
+      "startsAt": "2026-10-30T13:49:59Z"
+    }
+  ]
+}

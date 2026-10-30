@@ -1,0 +1,115 @@
+{
+  "schema_version": "1.0",
+  "incident": {
+    "id": "crashloop-02",
+    "alertname": "KubePodCrashLooping",
+    "severity": "warning",
+    "cluster": "prod-shanghai",
+    "namespace": "checkout",
+    "workload": "checkout-api",
+    "observed_at": "2026-10-30T13:50:00Z",
+    "collected_at": "2026-10-30T13:50:05Z",
+    "source": "alertmanager"
+  },
+  "generated_at": "2000-01-01T00:00:00Z",
+  "mode": "offline",
+  "degraded": false,
+  "summary": "容器反复启动失败进入 CrashLoopBackOff，需定位启动期错误",
+  "evidence": [
+    {
+      "id": "ev-001",
+      "source": "k8s.events",
+      "observed_at": "2026-10-30T13:49:56Z",
+      "collected_at": "2026-10-30T13:50:05Z",
+      "summary": "Warning BackOff: Back-off restarting failed container checkout-api（Pod checkout-api-8d3c-k4m2p）",
+      "content_ref": "k8s/events.json#items/0",
+      "query": "kubectl get events -n checkout -o json",
+      "redaction": "strict",
+      "sha256": "sha256:a18f378c4390da8ea5745f723c2ae77ce189a1d1271ecc7fe6ad041846c5dc78",
+      "stale": false
+    },
+    {
+      "id": "ev-004",
+      "source": "logs",
+      "observed_at": "2026-10-30T13:49:57Z",
+      "collected_at": "2026-10-30T13:50:05Z",
+      "summary": "日志摘录 logs/app.log：2026-10-30T13:49:57Z ERROR panic: failed to start http server: listen tcp :8080: bind: address already in use",
+      "content_ref": "logs/app.log#L1",
+      "query": "loki query_range",
+      "redaction": "strict",
+      "sha256": "sha256:b35402d01c40318df5a5ed7730492baf607a5379248d98096cd03fc4657445c7",
+      "stale": false
+    },
+    {
+      "id": "ev-002",
+      "source": "k8s.events",
+      "observed_at": "2026-10-30T13:49:58Z",
+      "collected_at": "2026-10-30T13:50:05Z",
+      "summary": "Warning Unhealthy: Liveness probe failed: Get [已移除外部链接] context deadline exceeded（Pod checkout-api-8d3c-k4m2p）",
+      "content_ref": "k8s/events.json#items/1",
+      "query": "kubectl get events -n checkout -o json",
+      "redaction": "strict",
+      "sha256": "sha256:a18f378c4390da8ea5745f723c2ae77ce189a1d1271ecc7fe6ad041846c5dc78",
+      "stale": false
+    },
+    {
+      "id": "ev-003",
+      "source": "k8s.pods",
+      "observed_at": "2026-10-30T13:50:00Z",
+      "collected_at": "2026-10-30T13:50:05Z",
+      "summary": "Kubernetes 资源快照 k8s/pods.yaml（1 个对象：Pod×1）",
+      "content_ref": "k8s/pods.yaml",
+      "query": "kubectl get pods -n checkout -o yaml",
+      "redaction": "strict",
+      "sha256": "sha256:80c33b9a0e3508f7ac6adddafdc3dd9a13294dd8a63ed9778a1d7152cc0bdfdb",
+      "stale": false
+    }
+  ],
+  "hypotheses": [
+    {
+      "rank": 1,
+      "statement": "容器反复启动失败进入 CrashLoopBackOff，需定位启动期错误",
+      "confidence": "mid",
+      "evidence_ids": [
+        "ev-001",
+        "ev-003",
+        "ev-004"
+      ],
+      "contradictions": [
+        {
+          "evidence_id": "ev-002",
+          "note": "存在探针失败证据，启动失败可能由 liveness/readiness 探针配置（initialDelay/period/timeout）引起，而非应用自身崩溃。"
+        }
+      ]
+    }
+  ],
+  "missing_data": [
+    {
+      "source": "prometheus.metrics",
+      "reason": "事故包缺少 metrics/ 指标数据",
+      "next_step": "导出故障前后 30 分钟的 Prometheus query_range 结果到 metrics/（脱敏后）"
+    },
+    {
+      "source": "changes",
+      "reason": "事故包缺少 changes/ 发布变更记录",
+      "next_step": "补充发布/镜像/commit 变更记录到 changes/rollout.json"
+    }
+  ],
+  "recommended_checks": [
+    "查看上一个容器实例日志与退出码",
+    "核对启动探针、配置与依赖服务可用性",
+    "对比最近发布是否改变启动参数"
+  ],
+  "suggested_fix": "只读建议：修复启动失败原因（配置/依赖/探针）后再发布；不自动重启或回滚。",
+  "limitations": [
+    "离线规则版本 rule-v0.2；未接入模型，不读取集群、不访问网络。",
+    "所有建议均为只读，不自动执行任何修复。",
+    "报告仅基于事故包内证据，未核验集群实时状态。",
+    "证据内容按不可执行数据处理：日志与事件中的指令性文本不会被执行或外传。"
+  ],
+  "versions": {
+    "cli": "dev",
+    "model": "none",
+    "rules": "rule-v0.2"
+  }
+}

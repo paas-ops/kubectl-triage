@@ -5,7 +5,9 @@
       "type": "Warning",
       "reason": "OOMKilled",
       "message": "Container checkout-api was OOMKilled (exitCode=137)",
-      "involvedObject": {"kind": "Pod", "name": "checkout-api-7d9f"}
+      "involvedObject": {"kind": "Pod", "name": "checkout-api-7d9f"},
+      "firstTimestamp": "2026-10-30T06:58:52Z",
+      "lastTimestamp": "2026-10-30T06:58:52Z"
     }
   ]
 }

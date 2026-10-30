@@ -3,15 +3,18 @@ package bundle
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"time"
 
+	"github.com/paas-ops/kubectl-triage/internal/redact"
+	"github.com/paas-ops/kubectl-triage/pkg/schema"
 	"gopkg.in/yaml.v3"
 )
 
@@ -32,13 +35,18 @@ type Incident struct {
 
 // Bundle is a loaded incident directory.
 type Bundle struct {
-	Dir      string
-	Incident Incident
+	Dir        string
+	Incident   Incident
+	RedactMode redact.Mode
+
+	findings []redact.Finding
 }
 
 var severityValues = map[string]bool{"critical": true, "warning": true, "info": true}
 
-// Load reads incident.yaml with strict field checking.
+// Load reads incident.yaml with strict field checking, converts it to JSON and
+// validates it against the public incident schema. The bundle starts in strict
+// redaction mode; callers may lower b.RedactMode before Validate/ReadFile.
 func Load(dir string) (*Bundle, error) {
 	path := filepath.Join(dir, IncidentFile)
 	f, err := os.Open(path)
@@ -56,10 +64,32 @@ func Load(dir string) (*Bundle, error) {
 		}
 		return nil, fmt.Errorf("parse %s: %w", path, err)
 	}
-	return &Bundle{Dir: dir, Incident: incident}, nil
+
+	data, err := json.Marshal(incident)
+	if err != nil {
+		return nil, fmt.Errorf("encode %s: %w", path, err)
+	}
+	if err := schema.ValidateIncident(data); err != nil {
+		return nil, &ValidationError{Problems: []string{IncidentFile + ": " + err.Error()}}
+	}
+	return &Bundle{Dir: dir, Incident: incident, RedactMode: redact.ModeStrict}, nil
 }
 
-// Validate checks required fields, timestamps and sensitive content.
+// effectiveMode normalizes the zero value to strict: a Bundle built directly by
+// a test or library caller must never silently skip security checks.
+func (b *Bundle) effectiveMode() redact.Mode {
+	if b.RedactMode == "" {
+		return redact.ModeStrict
+	}
+	return b.RedactMode
+}
+
+// Validate checks semantic constraints (timestamps) and scans for sensitive
+// content according to the bundle's redaction mode.
+//
+// It returns *SecurityError (CLI exit code 4) when strict mode finds possible
+// credentials, and *ValidationError (CLI exit code 1) for input problems.
+// Error messages never echo the matched secret value.
 func (b *Bundle) Validate() error {
 	var problems []string
 	add := func(format string, args ...any) { problems = append(problems, fmt.Sprintf(format, args...)) }
@@ -82,23 +112,24 @@ func (b *Bundle) Validate() error {
 	if strings.TrimSpace(b.Incident.Workload) == "" {
 		add("incident.workload is required")
 	}
-	observed, err := parseTime("incident.observed_at", b.Incident.ObservedAt, add)
-	if err != nil {
-		// parseTime already reported the problem
-	}
-	collected, err := parseTime("incident.collected_at", b.Incident.CollectedAt, add)
-	if err == nil && observed != nil && collected.Before(*observed) {
+	observed, observedErr := parseTime("incident.observed_at", b.Incident.ObservedAt, add)
+	collected, collectedErr := parseTime("incident.collected_at", b.Incident.CollectedAt, add)
+	if observedErr == nil && collectedErr == nil && collected.Before(observed) {
 		add("incident.collected_at must not be before observed_at")
 	}
 	if strings.TrimSpace(b.Incident.Source) == "" {
 		add("incident.source is required")
 	}
 
-	sensitive, err := ScanSensitive(b.Dir)
-	if err != nil {
-		add("sensitive scan failed: %v", err)
+	mode := b.effectiveMode()
+	findings, scanErr := b.Scan()
+	if scanErr != nil {
+		add("sensitive scan failed: %v", scanErr)
 	}
-	problems = append(problems, sensitive...)
+	b.findings = findings
+	if mode == redact.ModeStrict && len(findings) > 0 {
+		return &SecurityError{Findings: findings}
+	}
 
 	if len(problems) > 0 {
 		return &ValidationError{Problems: problems}
@@ -106,20 +137,37 @@ func (b *Bundle) Validate() error {
 	return nil
 }
 
-func parseTime(field, value string, add func(string, ...any)) (*time.Time, error) {
+// Scan checks the bundle for sensitive content according to the redaction
+// mode. ModeOff skips scanning entirely.
+func (b *Bundle) Scan() ([]redact.Finding, error) {
+	mode := b.effectiveMode()
+	if !mode.Scans() {
+		return nil, nil
+	}
+	return redact.Scan(b.Dir)
+}
+
+// Findings returns the findings cached by the most recent Validate call.
+func (b *Bundle) Findings() []redact.Finding {
+	out := make([]redact.Finding, len(b.findings))
+	copy(out, b.findings)
+	return out
+}
+
+func parseTime(field, value string, add func(string, ...any)) (time.Time, error) {
 	if strings.TrimSpace(value) == "" {
 		add("%s is required", field)
-		return nil, errors.New("missing")
+		return time.Time{}, errors.New("missing")
 	}
 	t, err := time.Parse(time.RFC3339Nano, value)
 	if err != nil {
 		add("%s must be RFC3339 (got %q)", field, value)
-		return nil, err
+		return time.Time{}, err
 	}
-	return &t, nil
+	return t, nil
 }
 
-// ValidationError carries all human-readable problems at once.
+// ValidationError carries all human-readable input problems at once.
 type ValidationError struct {
 	Problems []string
 }
@@ -128,90 +176,91 @@ func (e *ValidationError) Error() string {
 	return "incident bundle is invalid:\n  - " + strings.Join(e.Problems, "\n  - ")
 }
 
-// Sensitive patterns are intentionally conservative: credentials in key=value or
-// key: value form, JWT/private keys and cloud access keys. We do not flag the word
-// "secret" alone, which is common in runbooks.
-var sensitivePatterns = []*regexp.Regexp{
-	regexp.MustCompile(`(?i)(password|passwd|api[_-]?key|access[_-]?token|auth[_-]?token|secret[_-]?key)\s*[:=]\s*["']?[A-Za-z0-9_./+=-]{8,}`),
-	regexp.MustCompile(`eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{5,}`),
-	regexp.MustCompile(`-----BEGIN [A-Z ]*PRIVATE KEY-----`),
-	regexp.MustCompile(`AKIA[0-9A-Z]{16}`),
-	regexp.MustCompile(`gh[pousr]_[A-Za-z0-9]{30,}`),
+// SecurityError reports possible credentials or secrets found in the bundle.
+// It intentionally exposes only file/line/kind, never the matched value.
+type SecurityError struct {
+	Findings []redact.Finding
 }
 
+func (e *SecurityError) Error() string {
+	lines := make([]string, 0, len(e.Findings))
+	for _, finding := range e.Findings {
+		lines = append(lines, "  - "+finding.String())
+	}
+	return fmt.Sprintf(
+		"incident bundle may contain credentials or secrets (%d finding(s)); redact the raw values before analysis:\n%s",
+		len(e.Findings), strings.Join(lines, "\n"),
+	)
+}
+
+// textExtensions is the set of bundle files considered text evidence.
 var textExtensions = map[string]bool{
 	".yaml": true, ".yml": true, ".json": true, ".log": true, ".txt": true, ".md": true,
 }
 
-// ScanSensitive walks text files in the bundle and returns problems without
-// including the matched secret value in the message.
-func ScanSensitive(dir string) ([]string, error) {
-	var problems []string
-	err := filepath.WalkDir(dir, func(path string, d os.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if d.IsDir() {
-			name := d.Name()
-			if name == ".git" || name == "node_modules" {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-		if !textExtensions[strings.ToLower(filepath.Ext(path))] {
-			return nil
-		}
-		if strings.HasPrefix(filepath.Base(path), "report.") {
-			return nil
-		}
-		f, err := os.Open(path)
-		if err != nil {
-			return err
-		}
-		defer f.Close()
-		data, err := io.ReadAll(io.LimitReader(f, 1<<20))
-		if err != nil {
-			return err
-		}
-		rel, _ := filepath.Rel(dir, path)
-		for _, re := range sensitivePatterns {
-			if loc := re.FindIndex(data); loc != nil {
-				problems = append(problems, fmt.Sprintf("%s: possible credential/secret (%s); redact before analysis", rel, re.String()))
-				break
-			}
-		}
-		return nil
-	})
-	if err != nil {
-		return nil, err
+// resolve turns a bundle-relative path into an absolute path, rejecting
+// absolute paths and ".." escapes so evidence references cannot read outside
+// the bundle directory.
+func (b *Bundle) resolve(rel string) (string, error) {
+	if strings.TrimSpace(rel) == "" {
+		return "", errors.New("bundle file path is empty")
 	}
-	return problems, nil
+	slash := filepath.ToSlash(rel)
+	if filepath.IsAbs(rel) || strings.HasPrefix(slash, "/") {
+		return "", fmt.Errorf("bundle file path %q must be relative", rel)
+	}
+	clean := path.Clean(slash)
+	if clean == "." || clean == ".." || strings.HasPrefix(clean, "../") {
+		return "", fmt.Errorf("bundle file path %q escapes the bundle directory", rel)
+	}
+	full := filepath.Join(b.Dir, filepath.FromSlash(clean))
+	within, err := filepath.Rel(b.Dir, full)
+	if err != nil || within == ".." || strings.HasPrefix(within, ".."+string(filepath.Separator)) {
+		return "", fmt.Errorf("bundle file path %q escapes the bundle directory", rel)
+	}
+	return full, nil
 }
 
 // HasFile reports whether a relative file exists in the bundle.
 func (b *Bundle) HasFile(rel string) bool {
-	_, err := os.Stat(filepath.Join(b.Dir, filepath.FromSlash(rel)))
+	full, err := b.resolve(rel)
+	if err != nil {
+		return false
+	}
+	_, err = os.Stat(full)
 	return err == nil
 }
 
-// ReadFile reads a bundle file with a size cap.
+// ReadFile reads a bundle file with a size cap. In standard redaction mode the
+// returned bytes are scrubbed so analysis and reports never echo credentials.
 func (b *Bundle) ReadFile(rel string, maxBytes int64) ([]byte, error) {
+	full, err := b.resolve(rel)
+	if err != nil {
+		return nil, err
+	}
 	if maxBytes <= 0 {
 		maxBytes = 256 << 10
 	}
-	f, err := os.Open(filepath.Join(b.Dir, filepath.FromSlash(rel)))
+	f, err := os.Open(full)
 	if err != nil {
 		return nil, err
 	}
 	defer f.Close()
-	return io.ReadAll(io.LimitReader(f, maxBytes))
+	data, err := io.ReadAll(io.LimitReader(f, maxBytes))
+	if err != nil {
+		return nil, err
+	}
+	if b.effectiveMode().Scrubs() {
+		data = redact.Scrub(data)
+	}
+	return data, nil
 }
 
 // WalkTextFiles returns relative text files, excluding incident metadata and
 // previously generated reports. Deterministic order is required for reports.
 func (b *Bundle) WalkTextFiles() ([]string, error) {
 	var files []string
-	err := filepath.WalkDir(b.Dir, func(path string, d os.DirEntry, err error) error {
+	err := filepath.WalkDir(b.Dir, func(p string, d os.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -221,10 +270,13 @@ func (b *Bundle) WalkTextFiles() ([]string, error) {
 			}
 			return nil
 		}
-		if !textExtensions[strings.ToLower(filepath.Ext(path))] {
+		if !textExtensions[strings.ToLower(filepath.Ext(p))] {
 			return nil
 		}
-		rel, _ := filepath.Rel(b.Dir, path)
+		rel, err := filepath.Rel(b.Dir, p)
+		if err != nil {
+			return err
+		}
 		rel = filepath.ToSlash(rel)
 		if rel == IncidentFile || strings.HasPrefix(filepath.Base(rel), "report.") {
 			return nil
@@ -233,6 +285,21 @@ func (b *Bundle) WalkTextFiles() ([]string, error) {
 		return nil
 	})
 	return files, err
+}
+
+// ScanSensitive is kept for backward compatibility with earlier callers.
+//
+// Deprecated: use redact.Scan or Bundle.Scan.
+func ScanSensitive(dir string) ([]string, error) {
+	findings, err := redact.Scan(dir)
+	if err != nil {
+		return nil, err
+	}
+	problems := make([]string, 0, len(findings))
+	for _, finding := range findings {
+		problems = append(problems, finding.String()+": possible credential/secret")
+	}
+	return problems, nil
 }
 
 // SumLines is a small helper used by the initial rule analyzer.

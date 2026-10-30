@@ -7,70 +7,86 @@
     "cluster": "local",
     "namespace": "checkout",
     "workload": "checkout-api",
-    "observed_at": "2026-10-30T05:58:23Z",
-    "collected_at": "2026-10-30T06:08:23Z",
+    "observed_at": "2026-10-30T06:58:49Z",
+    "collected_at": "2026-10-30T06:58:54Z",
     "source": "example"
   },
-  "generated_at": "2026-10-30T06:08:23Z",
+  "generated_at": "2026-10-30T07:00:55Z",
   "mode": "offline",
   "degraded": false,
-  "summary": "容器因内存不足被 OOMKilled（需核对 memory limit 与工作集峰值）",
+  "summary": "容器因内存不足被 OOMKilled，需核对 memory limit 与工作集峰值",
   "evidence": [
     {
-      "id": "ev-001",
-      "source": "k8s/events.json",
-      "observed_at": "2026-10-30T05:58:23Z",
-      "collected_at": "2026-10-30T06:08:23Z",
-      "summary": "k8s/events.json (JSON snapshot, 251 bytes)",
-      "ref": "k8s/events.json",
-      "sha256": "sha256:d9824d9cf535a89010f1e94ac6cf75a0e34f3e2bc206cc5c5f48b81abeb124ee"
-    },
-    {
       "id": "ev-002",
-      "source": "logs/app.log",
-      "observed_at": "2026-10-30T05:58:23Z",
-      "collected_at": "2026-10-30T06:08:23Z",
-      "summary": "2026-10-12T09:13:50Z INFO starting checkout-api",
-      "ref": "logs/app.log",
-      "sha256": "sha256:50b2acb8f3265ed5bde8346bf70752eff2316afb8c7c4c001bb97bfb1ad7d165"
+      "source": "logs",
+      "observed_at": "2026-10-30T06:58:49Z",
+      "collected_at": "2026-10-30T06:58:54Z",
+      "summary": "日志摘录 logs/app.log：2026-10-30T06:58:49Z INFO starting checkout-api",
+      "content_ref": "logs/app.log#L1",
+      "query": "loki query_range",
+      "redaction": "strict",
+      "sha256": "sha256:fc56e1a4b24d21a27ee567f4f12575d8c13465a1bf6bc4bfcc984550c39d4202",
+      "stale": false
     },
     {
       "id": "ev-003",
-      "source": "metrics/memory.json",
-      "observed_at": "2026-10-30T05:58:23Z",
-      "collected_at": "2026-10-30T06:08:23Z",
-      "summary": "metrics/memory.json (JSON snapshot, 182 bytes)",
-      "ref": "metrics/memory.json",
-      "sha256": "sha256:55a11f15bbca8c3c8860c0eff195ad3835bcaac1f2a2128dc6583c6f71ea3dd3"
+      "source": "prometheus.metrics",
+      "observed_at": "2026-10-30T06:58:51Z",
+      "collected_at": "2026-10-30T06:58:54Z",
+      "summary": "Prometheus 指标快照 metrics/memory.json（resultType=matrix，1 个序列，2 个采样点，最新采样 2026-10-30T06:58:51Z）",
+      "content_ref": "metrics/memory.json",
+      "query": "prometheus query_range",
+      "redaction": "strict",
+      "sha256": "sha256:d7d9e150f617c8b1f4a0ce7d4ab05137a349d4261dce3ca584d9ffb123ba26fa",
+      "stale": false
+    },
+    {
+      "id": "ev-001",
+      "source": "k8s.events",
+      "observed_at": "2026-10-30T06:58:52Z",
+      "collected_at": "2026-10-30T06:58:54Z",
+      "summary": "Warning OOMKilled: Container checkout-api was OOMKilled (exitCode=137)（Pod checkout-api-7d9f）",
+      "content_ref": "k8s/events.json#items/0",
+      "query": "kubectl get events -n checkout -o json",
+      "redaction": "strict",
+      "sha256": "sha256:ed08a47b093745a08a8f8ce08c0259238f8571c42757ac6a7d39b1530fc2fed6",
+      "stale": false
     }
   ],
   "hypotheses": [
     {
       "rank": 1,
-      "statement": "容器因内存不足被 OOMKilled（需核对 memory limit 与工作集峰值）",
+      "statement": "容器因内存不足被 OOMKilled，需核对 memory limit 与工作集峰值",
       "confidence": "high",
       "evidence_ids": [
         "ev-001",
         "ev-002"
       ],
-      "contradictions": null
+      "contradictions": []
     }
   ],
-  "missing_data": [],
+  "missing_data": [
+    {
+      "source": "changes",
+      "reason": "事故包缺少 changes/ 发布变更记录",
+      "next_step": "补充发布/镜像/commit 变更记录到 changes/rollout.json"
+    }
+  ],
   "recommended_checks": [
     "核对容器 memory limit 与最近一次发布是否降低 limit",
     "查看同一节点其他 Pod 的内存压力与驱逐事件",
     "对比故障前 30 分钟容器 working set 与 limit"
   ],
-  "suggested_fix": "只读建议：在确认峰值后评估提高 memory limit 或修复内存泄漏；不自动修改工作负载。",
+  "suggested_fix": "只读建议：确认峰值后评估提高 memory limit 或修复内存泄漏；不自动修改工作负载。",
   "limitations": [
-    "v0.0.1 离线规则仅做签名匹配，正式评测前不得作为生产决策唯一依据。",
-    "未接入模型；不读取集群、不访问网络。",
-    "所有建议均为只读，不自动执行任何修复。"
+    "离线规则版本 rule-v0.2；未接入模型，不读取集群、不访问网络。",
+    "所有建议均为只读，不自动执行任何修复。",
+    "报告仅基于事故包内证据，未核验集群实时状态。",
+    "证据内容按不可执行数据处理：日志与事件中的指令性文本不会被执行或外传。"
   ],
   "versions": {
     "cli": "dev",
     "model": "none",
-    "rules": "rule-v0.1"
+    "rules": "rule-v0.2"
   }
 }

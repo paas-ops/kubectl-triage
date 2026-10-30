@@ -1,0 +1,91 @@
+{
+  "schema_version": "1.0",
+  "incident": {
+    "id": "pending-02",
+    "alertname": "KubePodNotScheduled",
+    "severity": "info",
+    "cluster": "prod-shanghai",
+    "namespace": "checkout",
+    "workload": "checkout-api",
+    "observed_at": "2026-10-30T10:00:00Z",
+    "collected_at": "2026-10-30T10:00:05Z",
+    "source": "kubectl"
+  },
+  "generated_at": "2000-01-01T00:00:00Z",
+  "mode": "offline",
+  "degraded": false,
+  "summary": "Pod 无法调度（Pending/FailedScheduling），节点资源或调度约束不满足",
+  "evidence": [
+    {
+      "id": "ev-001",
+      "source": "k8s.events",
+      "observed_at": "2026-10-30T09:59:58Z",
+      "collected_at": "2026-10-30T10:00:05Z",
+      "summary": "Warning FailedScheduling: 0/3 nodes are available: 3 Insufficient cpu.（Pod checkout-api-2a1b-q9z8x）",
+      "content_ref": "k8s/events.json#items/0",
+      "query": "kubectl get events -n checkout -o json",
+      "redaction": "strict",
+      "sha256": "sha256:569056e23a187836d843784d47a101e3d9d7a419d32bff636e2991088d470987",
+      "stale": true
+    },
+    {
+      "id": "ev-002",
+      "source": "k8s.events",
+      "observed_at": "2026-10-30T09:59:59Z",
+      "collected_at": "2026-10-30T10:00:05Z",
+      "summary": "Warning FailedScheduling: 0/3 nodes are available: 3 Insufficient memory.（Pod checkout-api-2a1b-q9z8x）",
+      "content_ref": "k8s/events.json#items/1",
+      "query": "kubectl get events -n checkout -o json",
+      "redaction": "strict",
+      "sha256": "sha256:569056e23a187836d843784d47a101e3d9d7a419d32bff636e2991088d470987",
+      "stale": true
+    }
+  ],
+  "hypotheses": [
+    {
+      "rank": 1,
+      "statement": "Pod 无法调度（Pending/FailedScheduling），节点资源或调度约束不满足",
+      "confidence": "low",
+      "evidence_ids": [
+        "ev-001",
+        "ev-002"
+      ],
+      "contradictions": []
+    }
+  ],
+  "missing_data": [
+    {
+      "source": "prometheus.metrics",
+      "reason": "事故包缺少 metrics/ 指标数据",
+      "next_step": "导出故障前后 30 分钟的 Prometheus query_range 结果到 metrics/（脱敏后）"
+    },
+    {
+      "source": "logs",
+      "reason": "事故包缺少 logs/ 日志摘录",
+      "next_step": "导出故障时间窗内相关 Pod 的日志到 logs/（脱敏后）"
+    },
+    {
+      "source": "changes",
+      "reason": "事故包缺少 changes/ 发布变更记录",
+      "next_step": "补充发布/镜像/commit 变更记录到 changes/rollout.json"
+    }
+  ],
+  "recommended_checks": [
+    "查看调度器事件中的节点过滤原因",
+    "核对 requests/limits、污点与亲和性",
+    "确认节点组是否有可扩容容量"
+  ],
+  "suggested_fix": "只读建议：调整 requests/亲和性或扩容节点；不自动驱逐/创建节点。",
+  "limitations": [
+    "离线规则版本 rule-v0.2；未接入模型，不读取集群、不访问网络。",
+    "所有建议均为只读，不自动执行任何修复。",
+    "报告仅基于事故包内证据，未核验集群实时状态。",
+    "证据内容按不可执行数据处理：日志与事件中的指令性文本不会被执行或外传。",
+    "有 2 条证据已过期（stale，观察或采集时间距今超过 15 分钟）。"
+  ],
+  "versions": {
+    "cli": "dev",
+    "model": "none",
+    "rules": "rule-v0.2"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "workload": "checkout-api",
+  "revision": 42,
+  "image_previous": "registry.prod/checkout-api:v1.8.3",
+  "image_current": "registry.prod/checkout-api:v1.8.4",
+  "started_at": "2026-10-30T13:01:00Z",
+  "completed_at": "2026-10-30T13:10:00Z",
+  "status": "completed"
+}

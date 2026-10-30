@@ -1,0 +1,41 @@
+{
+  "status": "firing",
+  "alerts": [
+    {
+      "status": "resolved",
+      "labels": {
+        "alertname": "KubePodCrashLooping",
+        "cluster": "prod-shanghai",
+        "namespace": "checkout",
+        "pod": "checkout-api-5c8b",
+        "severity": "warning"
+      },
+      "annotations": {
+        "description": "container checkout-api was restarted after the previous deploy",
+        "summary": "checkout-api restarted"
+      },
+      "startsAt": "2026-10-12T08:58:00Z",
+      "endsAt": "2026-10-12T09:02:00Z",
+      "generatorURL": "http://prometheus.example.com/graph",
+      "fingerprint": "a1b2c3d4"
+    },
+    {
+      "status": "firing",
+      "labels": {
+        "alertname": "KubePodCrashLooping",
+        "cluster": "prod-shanghai",
+        "namespace": "checkout",
+        "pod": "checkout-api-7d9f",
+        "severity": "critical"
+      },
+      "annotations": {
+        "description": "container checkout-api restarted 6 times in 10 minutes",
+        "summary": "checkout-api is crash looping"
+      },
+      "startsAt": "2026-10-12T09:04:00Z",
+      "endsAt": "0001-01-01T00:00:00Z",
+      "generatorURL": "http://prometheus.example.com/graph",
+      "fingerprint": "f2a91c4e"
+    }
+  ]
+}

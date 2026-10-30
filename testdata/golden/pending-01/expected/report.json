@@ -1,0 +1,115 @@
+{
+  "schema_version": "1.0",
+  "incident": {
+    "id": "pending-01",
+    "alertname": "KubePodNotScheduled",
+    "severity": "warning",
+    "cluster": "prod-shanghai",
+    "namespace": "checkout",
+    "workload": "checkout-api",
+    "observed_at": "2026-10-30T13:50:00Z",
+    "collected_at": "2026-10-30T13:50:05Z",
+    "source": "alertmanager"
+  },
+  "generated_at": "2000-01-01T00:00:00Z",
+  "mode": "offline",
+  "degraded": false,
+  "summary": "Pod 无法调度（Pending/FailedScheduling），节点资源或调度约束不满足",
+  "evidence": [
+    {
+      "id": "ev-002",
+      "source": "k8s.events",
+      "observed_at": "2026-10-30T13:49:57Z",
+      "collected_at": "2026-10-30T13:50:05Z",
+      "summary": "Warning FailedScheduling: 0/3 nodes are available: 3 Insufficient cpu.（Pod checkout-api-4d5e-t7y2u）",
+      "content_ref": "k8s/events.json#items/0",
+      "query": "kubectl get events -n checkout -o json",
+      "redaction": "strict",
+      "sha256": "sha256:9cfb5068ae44958f7750d0a8527eb2030f0917f5f6c4f9d0b7482b1e97d9d718",
+      "stale": false
+    },
+    {
+      "id": "ev-003",
+      "source": "k8s.events",
+      "observed_at": "2026-10-30T13:49:58Z",
+      "collected_at": "2026-10-30T13:50:05Z",
+      "summary": "Warning FailedScheduling: 0/3 nodes are available: 3 node(s) had untolerated taint {node-role.kubernetes.io/control-plane: }.（Pod checkout-api-4d5e-t7y2u）",
+      "content_ref": "k8s/events.json#items/1",
+      "query": "kubectl get events -n checkout -o json",
+      "redaction": "strict",
+      "sha256": "sha256:9cfb5068ae44958f7750d0a8527eb2030f0917f5f6c4f9d0b7482b1e97d9d718",
+      "stale": false
+    },
+    {
+      "id": "ev-001",
+      "source": "alertmanager",
+      "observed_at": "2026-10-30T13:49:59Z",
+      "collected_at": "2026-10-30T13:50:05Z",
+      "summary": "Alertmanager 告警快照 alert.json：1 条告警（alertname=KubePodNotScheduled）（status=firing）",
+      "content_ref": "alert.json",
+      "query": "alertmanager api v2 alerts",
+      "redaction": "strict",
+      "sha256": "sha256:92168f057956f2ec4d5aa8539b23b4d412f66c4f0ab19dac22b7e5009703c119",
+      "stale": false
+    },
+    {
+      "id": "ev-004",
+      "source": "k8s.pods",
+      "observed_at": "2026-10-30T13:50:00Z",
+      "collected_at": "2026-10-30T13:50:05Z",
+      "summary": "Kubernetes 资源快照 k8s/pods.yaml（1 个对象：Pod×1）",
+      "content_ref": "k8s/pods.yaml",
+      "query": "kubectl get pods -n checkout -o yaml",
+      "redaction": "strict",
+      "sha256": "sha256:fecd6f4e4a20e6a5af8e82413f732241f2463035553c1349482984e2960ac5b4",
+      "stale": false
+    }
+  ],
+  "hypotheses": [
+    {
+      "rank": 1,
+      "statement": "Pod 无法调度（Pending/FailedScheduling），节点资源或调度约束不满足",
+      "confidence": "high",
+      "evidence_ids": [
+        "ev-002",
+        "ev-003",
+        "ev-004"
+      ],
+      "contradictions": []
+    }
+  ],
+  "missing_data": [
+    {
+      "source": "prometheus.metrics",
+      "reason": "事故包缺少 metrics/ 指标数据",
+      "next_step": "导出故障前后 30 分钟的 Prometheus query_range 结果到 metrics/（脱敏后）"
+    },
+    {
+      "source": "logs",
+      "reason": "事故包缺少 logs/ 日志摘录",
+      "next_step": "导出故障时间窗内相关 Pod 的日志到 logs/（脱敏后）"
+    },
+    {
+      "source": "changes",
+      "reason": "事故包缺少 changes/ 发布变更记录",
+      "next_step": "补充发布/镜像/commit 变更记录到 changes/rollout.json"
+    }
+  ],
+  "recommended_checks": [
+    "查看调度器事件中的节点过滤原因",
+    "核对 requests/limits、污点与亲和性",
+    "确认节点组是否有可扩容容量"
+  ],
+  "suggested_fix": "只读建议：调整 requests/亲和性或扩容节点；不自动驱逐/创建节点。",
+  "limitations": [
+    "离线规则版本 rule-v0.2；未接入模型，不读取集群、不访问网络。",
+    "所有建议均为只读，不自动执行任何修复。",
+    "报告仅基于事故包内证据，未核验集群实时状态。",
+    "证据内容按不可执行数据处理：日志与事件中的指令性文本不会被执行或外传。"
+  ],
+  "versions": {
+    "cli": "dev",
+    "model": "none",
+    "rules": "rule-v0.2"
+  }
+}

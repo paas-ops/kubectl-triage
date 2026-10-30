@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: List
+items:
+  - apiVersion: v1
+    kind: Pod
+    metadata:
+      name: checkout-api-8d3c-k4m2p
+      namespace: checkout
+    spec:
+      nodeName: node-5
+      containers:
+        - name: checkout-api
+          image: registry.prod/checkout-api:v1.8.4
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 1
+            periodSeconds: 2
+    status:
+      phase: Running
+      containerStatuses:
+        - name: checkout-api
+          ready: false
+          restartCount: 9
+          state:
+            waiting:
+              reason: CrashLoopBackOff
+              message: back-off 40s restarting failed container

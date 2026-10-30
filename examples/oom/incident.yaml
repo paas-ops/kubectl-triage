@@ -4,6 +4,6 @@ severity: critical
 cluster: local
 namespace: checkout
 workload: checkout-api
-observed_at: 2026-10-30T05:58:23Z
-collected_at: 2026-10-30T06:08:23Z
+observed_at: 2026-10-30T06:58:49Z
+collected_at: 2026-10-30T06:58:54Z
 source: example

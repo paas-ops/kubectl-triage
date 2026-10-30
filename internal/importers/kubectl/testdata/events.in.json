@@ -1,0 +1,42 @@
+{
+  "apiVersion": "v1",
+  "kind": "EventList",
+  "metadata": {"resourceVersion": "1146"},
+  "items": [
+    {
+      "apiVersion": "v1",
+      "kind": "Event",
+      "metadata": {
+        "name": "checkout-api-7d9f.17f0",
+        "namespace": "checkout",
+        "creationTimestamp": "2026-10-12T09:13:50Z"
+      },
+      "type": "Warning",
+      "reason": "OOMKilled",
+      "message": "Container checkout-api was OOMKilled (exitCode=137)",
+      "involvedObject": {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "name": "checkout-api-7d9f",
+        "namespace": "checkout",
+        "uid": "8b6f4c2a-1d3e-4f5a-9b7c-6d5e4f3a2b1c",
+        "fieldPath": "spec.containers{checkout-api}"
+      },
+      "count": 3,
+      "firstTimestamp": "2026-10-12T09:13:50Z",
+      "lastTimestamp": "2026-10-12T09:18:50Z",
+      "source": {"component": "kubelet", "host": "node-1"}
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Event",
+      "type": "Normal",
+      "reason": "Pulled",
+      "message": "Container image checkout-api:1.4.2 already present on machine",
+      "involvedObject": {"kind": "Pod", "namespace": "checkout", "name": "checkout-api-5c8b"},
+      "count": 1,
+      "firstTimestamp": "2026-10-12T09:10:00Z",
+      "lastTimestamp": "2026-10-12T09:10:00Z"
+    }
+  ]
+}

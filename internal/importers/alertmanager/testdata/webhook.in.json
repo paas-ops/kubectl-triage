@@ -1,0 +1,49 @@
+{
+  "version": "4",
+  "groupKey": "{}:{alertname=\"KubePodCrashLooping\"}",
+  "truncatedAlerts": 0,
+  "status": "firing",
+  "receiver": "platform-webhook",
+  "groupLabels": {"alertname": "KubePodCrashLooping"},
+  "commonLabels": {"cluster": "prod-shanghai", "namespace": "checkout"},
+  "commonAnnotations": {"summary": "checkout-api is not healthy"},
+  "externalURL": "http://alertmanager.example.com",
+  "alerts": [
+    {
+      "status": "firing",
+      "labels": {
+        "alertname": "KubePodCrashLooping",
+        "cluster": "prod-shanghai",
+        "namespace": "checkout",
+        "pod": "checkout-api-7d9f",
+        "severity": "critical"
+      },
+      "annotations": {
+        "summary": "checkout-api is crash looping",
+        "description": "container checkout-api restarted 6 times in 10 minutes"
+      },
+      "startsAt": "2026-10-12T09:04:00Z",
+      "endsAt": "0001-01-01T00:00:00Z",
+      "generatorURL": "http://prometheus.example.com/graph",
+      "fingerprint": "f2a91c4e"
+    },
+    {
+      "status": "resolved",
+      "labels": {
+        "alertname": "KubePodCrashLooping",
+        "cluster": "prod-shanghai",
+        "namespace": "checkout",
+        "pod": "checkout-api-5c8b",
+        "severity": "warning"
+      },
+      "annotations": {
+        "summary": "checkout-api restarted",
+        "description": "container checkout-api was restarted after the previous deploy"
+      },
+      "startsAt": "2026-10-12T08:58:00Z",
+      "endsAt": "2026-10-12T09:02:00Z",
+      "generatorURL": "http://prometheus.example.com/graph",
+      "fingerprint": "a1b2c3d4"
+    }
+  ]
+}

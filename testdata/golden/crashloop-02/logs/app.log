@@ -1,0 +1,2 @@
+2026-10-30T13:49:57Z ERROR panic: failed to start http server: listen tcp :8080: bind: address already in use
+2026-10-30T13:49:58Z WARN container will be restarted by kubelet

@@ -1,6 +1,8 @@
 /kubectl-triage
 /dist/
 /coverage.out
+/.gocache/
+/.gomodcache/
 .DS_Store
 .env
 .env.*

@@ -1,0 +1,9 @@
+id: pending-02
+alertname: KubePodNotScheduled
+severity: info
+cluster: prod-shanghai
+namespace: checkout
+workload: checkout-api
+observed_at: 2026-10-30T10:00:00Z
+collected_at: 2026-10-30T10:00:05Z
+source: kubectl

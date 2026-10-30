@@ -1,0 +1,16 @@
+{
+  "status": "success",
+  "data": {
+    "resultType": "matrix",
+    "result": [
+      {
+        "metric": {"container": "checkout-api", "namespace": "checkout", "pod": "checkout-api-7d9f"},
+        "values": [[1793000000, "498"], [1793000060, "512"], [1793000120, "0"]]
+      },
+      {
+        "metric": {"container": "checkout-api", "namespace": "checkout", "pod": "checkout-api-5c8b"},
+        "values": [[1793000000, "120"], [1793000060, "124"]]
+      }
+    ]
+  }
+}

@@ -1,0 +1,60 @@
+{
+  "schema_version": "1.0",
+  "incident": {
+    "id": "missing-01",
+    "alertname": "Unknown",
+    "severity": "warning",
+    "cluster": "prod-shanghai",
+    "namespace": "checkout",
+    "workload": "checkout-api",
+    "observed_at": "2026-10-30T13:50:00Z",
+    "collected_at": "2026-10-30T13:50:05Z",
+    "source": "manual"
+  },
+  "generated_at": "2000-01-01T00:00:00Z",
+  "mode": "offline",
+  "degraded": false,
+  "summary": "现有证据不足以形成可引用的根因假设。",
+  "evidence": [],
+  "hypotheses": [],
+  "missing_data": [
+    {
+      "source": "prometheus.metrics",
+      "reason": "事故包缺少 metrics/ 指标数据",
+      "next_step": "导出故障前后 30 分钟的 Prometheus query_range 结果到 metrics/（脱敏后）"
+    },
+    {
+      "source": "k8s.events",
+      "reason": "事故包缺少 k8s/events.json 事件列表",
+      "next_step": "运行 kubectl get events -n \u003cnamespace\u003e -o json，脱敏后保存为 k8s/events.json"
+    },
+    {
+      "source": "logs",
+      "reason": "事故包缺少 logs/ 日志摘录",
+      "next_step": "导出故障时间窗内相关 Pod 的日志到 logs/（脱敏后）"
+    },
+    {
+      "source": "changes",
+      "reason": "事故包缺少 changes/ 发布变更记录",
+      "next_step": "补充发布/镜像/commit 变更记录到 changes/rollout.json"
+    },
+    {
+      "source": "incident.evidence",
+      "reason": "未找到五类故障的明确签名或证据不足",
+      "next_step": "按上述缺失项补齐证据后重新运行 analyze；优先补充 k8s/events.json 与 logs/"
+    }
+  ],
+  "recommended_checks": [],
+  "suggested_fix": "",
+  "limitations": [
+    "离线规则版本 rule-v0.2；未接入模型，不读取集群、不访问网络。",
+    "所有建议均为只读，不自动执行任何修复。",
+    "报告仅基于事故包内证据，未核验集群实时状态。",
+    "证据内容按不可执行数据处理：日志与事件中的指令性文本不会被执行或外传。"
+  ],
+  "versions": {
+    "cli": "dev",
+    "model": "none",
+    "rules": "rule-v0.2"
+  }
+}

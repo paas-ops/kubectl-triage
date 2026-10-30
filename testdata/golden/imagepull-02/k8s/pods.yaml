@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: List
+items:
+  - apiVersion: v1
+    kind: Pod
+    metadata:
+      name: checkout-api-9f2k1-def
+      namespace: checkout
+    spec:
+      nodeName: node-4
+      containers:
+        - name: checkout-api
+          image: registry.prod/checkout-api:v2.0.0
+    status:
+      containerStatuses:
+        - name: checkout-api
+          ready: false
+          restartCount: 0
+          state:
+            waiting:
+              reason: ImagePullBackOff
+              message: Back-off pulling image registry.prod/checkout-api:v2.0.0

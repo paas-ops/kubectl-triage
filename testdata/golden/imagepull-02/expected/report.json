@@ -1,0 +1,107 @@
+{
+  "schema_version": "1.0",
+  "incident": {
+    "id": "imagepull-02",
+    "alertname": "KubeImagePullBackOff",
+    "severity": "critical",
+    "cluster": "prod-shanghai",
+    "namespace": "checkout",
+    "workload": "checkout-api",
+    "observed_at": "2026-10-30T13:50:00Z",
+    "collected_at": "2026-10-30T13:50:05Z",
+    "source": "alertmanager"
+  },
+  "generated_at": "2000-01-01T00:00:00Z",
+  "mode": "offline",
+  "degraded": false,
+  "summary": "镜像拉取失败（ImagePullBackOff/ErrImagePull），镜像名、tag 或仓库凭证之一不可用",
+  "evidence": [
+    {
+      "id": "ev-001",
+      "source": "k8s.events",
+      "observed_at": "2026-10-30T13:49:56Z",
+      "collected_at": "2026-10-30T13:50:05Z",
+      "summary": "Warning Failed: Failed to pull image registry.prod/checkout-api:v2.0.0: manifest unknown（Pod checkout-api-9f2k1-def）",
+      "content_ref": "k8s/events.json#items/0",
+      "query": "kubectl get events -n checkout -o json",
+      "redaction": "strict",
+      "sha256": "sha256:e2b751ebf0d51880a9400c00f18dc3ae0d3261470f909f2b2a313ab13ac1cfca",
+      "stale": false
+    },
+    {
+      "id": "ev-002",
+      "source": "k8s.events",
+      "observed_at": "2026-10-30T13:49:58Z",
+      "collected_at": "2026-10-30T13:50:05Z",
+      "summary": "Normal Pulled: Successfully pulled image registry.prod/checkout-api:v1.9.0（Pod checkout-api-7c8d9-abc）",
+      "content_ref": "k8s/events.json#items/1",
+      "query": "kubectl get events -n checkout -o json",
+      "redaction": "strict",
+      "sha256": "sha256:e2b751ebf0d51880a9400c00f18dc3ae0d3261470f909f2b2a313ab13ac1cfca",
+      "stale": false
+    },
+    {
+      "id": "ev-003",
+      "source": "k8s.pods",
+      "observed_at": "2026-10-30T13:50:00Z",
+      "collected_at": "2026-10-30T13:50:05Z",
+      "summary": "Kubernetes 资源快照 k8s/pods.yaml（1 个对象：Pod×1）",
+      "content_ref": "k8s/pods.yaml",
+      "query": "kubectl get pods -n checkout -o yaml",
+      "redaction": "strict",
+      "sha256": "sha256:e28a3ab80769e514196e91a724a7c76b84d6f2c1d6bd640311874d2c7376977a",
+      "stale": false
+    }
+  ],
+  "hypotheses": [
+    {
+      "rank": 1,
+      "statement": "镜像拉取失败（ImagePullBackOff/ErrImagePull），镜像名、tag 或仓库凭证之一不可用",
+      "confidence": "mid",
+      "evidence_ids": [
+        "ev-001",
+        "ev-003"
+      ],
+      "contradictions": [
+        {
+          "evidence_id": "ev-002",
+          "note": "存在镜像曾被成功拉取或已在本机的证据，更像是 tag 被覆盖、仓库元数据或凭证轮换，而非镜像名完全不可达。"
+        }
+      ]
+    }
+  ],
+  "missing_data": [
+    {
+      "source": "prometheus.metrics",
+      "reason": "事故包缺少 metrics/ 指标数据",
+      "next_step": "导出故障前后 30 分钟的 Prometheus query_range 结果到 metrics/（脱敏后）"
+    },
+    {
+      "source": "logs",
+      "reason": "事故包缺少 logs/ 日志摘录",
+      "next_step": "导出故障时间窗内相关 Pod 的日志到 logs/（脱敏后）"
+    },
+    {
+      "source": "changes",
+      "reason": "事故包缺少 changes/ 发布变更记录",
+      "next_step": "补充发布/镜像/commit 变更记录到 changes/rollout.json"
+    }
+  ],
+  "recommended_checks": [
+    "核对镜像 tag 是否存在、是否被覆盖",
+    "检查 imagePullSecret 与仓库权限",
+    "确认节点到镜像仓库的网络与限流"
+  ],
+  "suggested_fix": "只读建议：修正镜像引用或仓库凭证后重新发布；不自动拉取或覆盖镜像。",
+  "limitations": [
+    "离线规则版本 rule-v0.2；未接入模型，不读取集群、不访问网络。",
+    "所有建议均为只读，不自动执行任何修复。",
+    "报告仅基于事故包内证据，未核验集群实时状态。",
+    "证据内容按不可执行数据处理：日志与事件中的指令性文本不会被执行或外传。"
+  ],
+  "versions": {
+    "cli": "dev",
+    "model": "none",
+    "rules": "rule-v0.2"
+  }
+}
