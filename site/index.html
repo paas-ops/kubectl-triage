@@ -43,7 +43,7 @@
     <!-- Hero -->
     <section id="top" class="hero">
       <div class="container hero-inner">
-        <p class="eyebrow"><span class="dot" aria-hidden="true"></span> M4 企业桥 · Apache-2.0 · 离线优先</p>
+        <p class="eyebrow"><span class="dot" aria-hidden="true"></span> M5 · v1.0 准备 · Apache-2.0 · 离线优先</p>
         <h1>把一次历史故障，变成<br class="hero-break">可复现、可追溯、可评审的<em>本地</em>诊断报告。</h1>
         <p class="lead">
           <strong>kubectl-triage</strong> 是一个离线优先的 Kubernetes 事故诊断 CLI。
@@ -61,7 +61,7 @@
           <li><strong>默认零网络</strong><span>不传 --model 就不发任何请求</span></li>
           <li><strong>只读</strong><span>不调集群写接口，不 exec，不读 Secret</span></li>
           <li><strong>12 个 golden</strong><span>确定性规则回归，输出可快照</span></li>
-          <li><strong>单二进制</strong><span>macOS / Linux · amd64 + arm64</span></li>
+          <li><strong>单二进制</strong><span>macOS / Linux / Windows · amd64 + arm64</span></li>
         </ul>
       </div>
     </section>
@@ -122,7 +122,7 @@ kubectl-triage version</code></pre>
           <div class="callout">
             <h3>也可以作为 kubectl 插件</h3>
             <pre><code>kubectl triage analyze /tmp/triage-demo</code></pre>
-            <p>二进制名为 <code>kubectl-triage</code> 且在 <code>PATH</code> 中时，kubectl 会自动发现它。</p>
+            <p>二进制名为 <code>kubectl-triage</code>（Windows 为 <code>kubectl-triage.exe</code>）且在 <code>PATH</code> 中时，kubectl 会自动发现它。</p>
           </div>
           <div class="callout">
             <h3>稳定退出码（CI 可用）</h3>
@@ -147,7 +147,7 @@ kubectl-triage version</code></pre>
         <header class="section-head">
           <p class="kicker">安装矩阵</p>
           <h2>选一条最短的安装路径</h2>
-          <p class="section-lead">所有分发产物都提供 sha256 校验、cosign keyless 签名与 CycloneDX SBOM。</p>
+          <p class="section-lead">所有归档（含 Windows zip）都提供 sha256 校验、cosign keyless 签名与 CycloneDX SBOM。</p>
         </header>
 
         <div class="table-wrap">
@@ -172,6 +172,11 @@ kubectl-triage version</code></pre>
                 <td><span class="tag tag-ok">v0.3.0 起</span></td>
               </tr>
               <tr>
+                <th scope="row">Windows（amd64）</th>
+                <td><code>kubectl-triage_&lt;version&gt;_windows_amd64.zip</code> · 解压后 <code>kubectl-triage.exe</code>，可放入 PATH 作 kubectl 插件</td>
+                <td><span class="tag tag-ok">v0.5.0 起</span></td>
+              </tr>
+              <tr>
                 <th scope="row">Docker / GHCR</th>
                 <td><code>docker run --rm ghcr.io/paas-ops/kubectl-triage:v0.3.0 version</code></td>
                 <td><span class="tag tag-ok">v0.3.0 起</span></td>
@@ -187,7 +192,8 @@ kubectl-triage version</code></pre>
 
         <div class="note-row">
           <p><strong>校验供应链：</strong>下载 <code>checksums.txt</code> 后先做 sha256 校验，再用
-          <code>cosign verify-blob</code> 验证 keyless 签名，SBOM 为每个归档同名的 <code>*.cdx.json</code>。</p>
+          <code>cosign verify-blob</code> 验证 keyless 签名；每个归档（含 Windows zip）都提供同名
+          CycloneDX SBOM（<code>*.cdx.json</code>）。</p>
           <p><strong>Homebrew tap 已建立：</strong><code>brew tap paas-ops/homebrew-tap</code> 后安装；
           formula 随新版本自动同步，同时作为 Release 资产发布（<code>kubectl-triage.rb</code>），详细步骤见文档。</p>
         </div>
@@ -394,7 +400,7 @@ kubectl-triage eval testdata/golden --now 2026-10-30T14:00:00Z \
     <div class="container footer-inner">
       <div class="footer-brand">
         <strong>kubectl-triage</strong>
-        <span>Apache-2.0 · 当前 M4 企业桥</span>
+        <span>Apache-2.0 · 当前 M5（v1.0 准备）</span>
       </div>
       <nav class="footer-nav" aria-label="页脚导航">
         <a href="https://github.com/paas-ops/kubectl-triage">GitHub</a>

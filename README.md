@@ -3,12 +3,13 @@
 轻量、离线优先的 Kubernetes 事故诊断 CLI。开发者在本地对历史故障数据做一次可追溯的诊断，
 不依赖控制平面、不上传证据；企业版再把单次诊断升级为团队事故库、评测、审计与私有部署。
 
-> 当前为 **M4 企业桥（目标版本 `v0.4.0`）**：`init` / `import` / `validate` / `analyze` /
+> 当前为 **M5 v1.0 准备（目标版本 `v0.5.0`）**：`init` / `import` / `validate` / `analyze` /
 > `report` / `eval` / `telemetry` / `push` 可用，支持五类故障确定性规则、证据引用/反证/缺失说明、
-> 可选模型（默认关闭、失败自动降级）、本地 eval、opt-in 遥测，以及预编译 / 签名 / SBOM / Docker /
-> Homebrew 分发。`push` 是可选的企业推送客户端（显式配置，默认只发报告与证据哈希），公开协议 1.0；
-> 企业事故库、评测集托管、审计与私有部署在 CloudOps Agent 商业版，不在本仓库。正式评测前不得把
-> 结果作为生产决策唯一依据。
+> 可选模型（默认关闭、失败自动降级）、本地 eval 与正式评测集校验器（`eval --validate`）、opt-in 遥测、
+> 企业 push 客户端，以及 macOS / Linux / **Windows** 预编译、签名、SBOM、Docker、Homebrew 分发。
+> `report.json` 的 `schema_version 1.0` 进入兼容基线阶段（见 [docs/schema.md](docs/schema.md)）；
+> v1.0 宣布仍需正式 100 例盲测集与试点数据支撑，本阶段只做工程准备。企业事故库、评测集托管、审计与
+> 私有部署在 CloudOps Agent 商业版，不在本仓库。正式评测前不得把结果作为生产决策唯一依据。
 >
 > 文档站（静态、可离线打开）：**https://paas-ops.github.io/kubectl-triage/** ·
 > 站点源码 [site/index.html](site/index.html)（无构建步骤、无外部依赖）。
@@ -48,11 +49,13 @@ kubectl triage analyze /tmp/triage-demo
 | --- | --- | --- |
 | 源码（Go 1.24+） | `go install github.com/paas-ops/kubectl-triage/cmd/kubectl-triage@latest` | ✅ 立即可用 |
 | Release 二进制 | `kubectl-triage_<version>_<os>_<arch>.tar.gz`（darwin/linux × amd64/arm64） | ✅ `v0.3.0` 起 |
+| Windows 二进制 | `kubectl-triage_<version>_windows_amd64.zip`（解压后 `kubectl-triage.exe`，可放入 PATH 作 kubectl 插件） | ✅ `v0.5.0` 起 |
 | Docker / GHCR | `docker run --rm ghcr.io/paas-ops/kubectl-triage:v0.3.0 version` | ✅ `v0.3.0` 起 |
 | Homebrew | `brew tap paas-ops/homebrew-tap && brew install kubectl-triage` | ✅ tap 已建立（formula 自动同步） |
 
-- 每个 Release 资产提供 sha256（`checksums.txt`）、cosign keyless 签名（`.sig` / `.pem`）与
-  CycloneDX SBOM（`*.cdx.json`）；校验步骤见 [docs/install.md](docs/install.md)。
+- 每个 Release 归档（tar.gz / Windows zip）提供 sha256（`checksums.txt`）、cosign keyless 签名
+  （`.sig` / `.pem`）与同名 CycloneDX SBOM（`*.cdx.json`）；校验步骤见
+  [docs/install.md](docs/install.md)。
 - Homebrew formula 目前作为 Release 资产发布，tap 自动推送需要 `HOMEBREW_TAP_GITHUB_TOKEN`；
   现状与 bootstrap 步骤见 [docs/homebrew.md](docs/homebrew.md)。
 - 没有预编译产物的旧版本（v0.1.0 / v0.2.0）以源码安装为准。
@@ -67,8 +70,9 @@ kubectl triage analyze /tmp/triage-demo
 | `report <dir>` | ✅ 从已有 `report.json` 重新渲染，不重新分析 |
 | `import alertmanager/kubectl/prometheus/loki` | ✅ 导入时扫描凭据，命中退出码 4 |
 | `--model`（Ollama / OpenAI-compatible） | ✅ 可选模型模式，默认关闭；预算/超时/轮次，失败降级退出码 3 |
-| `eval <dir>` | ✅ 本地评测（Top1/Top3/缺失/注入/降级；`--json`、`--now` 复现 golden） |
+| `eval <dir>` | ✅ 本地评测（Top1/Top3/缺失/注入/降级；`--json`、`--now` 复现 golden）；`--validate [--min-cases N]` 只校验评测集结构（不运行分析，退出码 0/1/2） |
 | `telemetry status\|enable\|disable` | ✅ 匿名遥测 opt-in，默认关闭；字段白名单，绝不采集事故内容 |
+| schema 兼容基线 | ✅ `pkg/schema` 基线测试（`UPDATE_COMPAT=1` 显式更新）；12 golden 与 examples 报告持续校验（`v0.5.0` 起） |
 | 预编译 / 签名 / SBOM / Docker / Homebrew | ✅ `v0.3.0` tag 触发 release workflow 生成；Homebrew formula 由 tap workflow 自动同步 |
 | `push <dir>`（企业推送，可选） | ✅ 显式配置端点/令牌；默认只发报告与证据哈希；`--dry-run`；退出码 0/1/3/4（`v0.4.0` 起） |
 
@@ -122,6 +126,7 @@ kubectl-triage push ./incidents/2026-10-12-checkout-oom \
 - [安装与校验](docs/install.md)：Release 资产、sha256 / cosign / SBOM、Docker、go install、Homebrew
 - [Homebrew 现状与 tap bootstrap](docs/homebrew.md)：formula 资产、`HOMEBREW_TAP_GITHUB_TOKEN`、后续启用
 - [安全与数据流](docs/security.md)：只读/网络边界、数据流图、遥测隐私、权限清单、漏洞上报
+- [Schema 契约](docs/schema.md)：incident/report 字段总览、`schema_version` 语义、v0.x/v1.0 兼容承诺与破坏性变更流程
 - [模型模式](docs/model.md)：Ollama / OpenAI-compatible 配置、预算、降级与安全边界
 - [本地评测](docs/eval.md)：eval 用法、评分口径、JSON 契约与 CI 示例
 - [评测集契约](docs/eval-contract.md)：正式 100 例评测集的目录/数据契约与企业版共用 schema
@@ -132,6 +137,7 @@ kubectl-triage push ./incidents/2026-10-12-checkout-oom \
 - [指标漏斗与周报](docs/metrics.md)：安装→激活→重复→试点口径、周报模板与反虚荣指标
 - [ADR-005 M3 实现口径](docs/adr/ADR-005-M3实现口径.md)：发布产物、签名/SBOM、Docker/Homebrew、文档站、遥测
 - [ADR-006 M4 实现口径](docs/adr/ADR-006-M4实现口径.md)：push 客户端与公开协议 1.0、幂等/重试、证据包
+- [ADR-007 v1.0 准备](docs/adr/ADR-007-v1.0准备.md)：schema 兼容策略与基线、Windows 支持、评测集校验器
 - [ADR-002 契约口径](docs/adr/ADR-002-契约口径.md) · [ADR-003 M1](docs/adr/ADR-003-M1实现口径.md) ·
   [ADR-004 M2](docs/adr/ADR-004-M2实现口径.md)
 - [需求文档](docs/需求文档.md)：产品定位、CLI 交互、证据规范、开源/商业边界、指标与验收标准
