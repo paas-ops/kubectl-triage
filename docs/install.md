@@ -14,7 +14,7 @@ kubectl-triage 是单二进制 CLI，支持 macOS / Linux 的 amd64 与 arm64。
 | [源码 `go install`](#1-源码安装) | 有 Go 1.24+ 工具链；任何版本都可装 | ✅ 立即可用 |
 | [Release 二进制](#2-release-二进制) | 不想装 Go；需要校验 / 签名 / SBOM | ✅ `v0.3.0` 起 |
 | [Docker / GHCR](#4-docker--ghcr) | CI、临时排查、隔离环境 | ✅ `v0.3.0` 起 |
-| [Homebrew](#5-homebrew) | macOS / Linuxbrew 日常使用 | ⏳ tap bootstrap 待完成，见 [docs/homebrew.md](homebrew.md) |
+| [Homebrew](#5-homebrew) | macOS / Linuxbrew 日常使用 | ✅ tap 已建立（v0.3.0 formula；新版本手工同步，见 [docs/homebrew.md](homebrew.md)） |
 
 > 没有预编译产物的版本（v0.1.0 / v0.2.0）以源码安装为准；Beta 起以 Release 资产为准。
 > 运行时不需要网络：安装阶段需要，之后默认零网络。
@@ -45,7 +45,7 @@ kubectl-triage version
 | `checksums.txt` | 全部 `tar.gz` 的 sha256 |
 | `checksums.txt.sig` / `checksums.txt.pem` | cosign keyless 对 `checksums.txt` 的签名与证书 |
 | `kubectl-triage_<version>_<os>_<arch>.cdx.json` × 4 | 每个归档的 CycloneDX JSON SBOM |
-| `kubectl-triage.rb` | Homebrew formula（tap 建立前的资产形态） |
+| `kubectl-triage.rb` | Homebrew formula（已同步到 `paas-ops/homebrew-tap`） |
 
 `<version>` 不含 `v` 前缀（tag `v0.3.0` → 文件名 `..._0.3.0_...`）。
 
@@ -178,16 +178,19 @@ cosign verify ghcr.io/paas-ops/kubectl-triage:v0.3.0 \
 
 ## 5. Homebrew
 
-tap 仓库 `paas-ops/homebrew-tap` **尚未建立**。当前 Homebrew formula 以 Release 资产
-`kubectl-triage.rb` 的形式发布；tap 建立后可用的安装命令为：
+tap 仓库 `paas-ops/homebrew-tap` **已建立**，包含 `v0.3.0` formula：
 
 ```bash
 brew tap paas-ops/homebrew-tap
 brew install kubectl-triage
+
+# 升级 / 卸载
+brew update && brew upgrade kubectl-triage
+brew uninstall kubectl-triage
 ```
 
-在 tap 建立前，请使用[源码安装](#1-源码安装)或[Release 二进制](#2-release-二进制)；formula
-的审阅、tap bootstrap 与自动推送（`HOMEBREW_TAP_GITHUB_TOKEN`）步骤见
+后续版本的 formula 目前由维护者手工同步（下载 Release 资产 `kubectl-triage.rb` → 提交到 tap 的
+`Formula/`）；自动推送待配置 `HOMEBREW_TAP_GITHUB_TOKEN`。同步与审阅要点见
 [docs/homebrew.md](homebrew.md)。
 
 ## 6. 验证安装

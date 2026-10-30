@@ -10,6 +10,8 @@ Beta distribution: signed release artifacts, container image, docs site and opt-
   `docker-build` jobs.
 - Container image: `ghcr.io/paas-ops/kubectl-triage:v0.3.0` and `:latest`, distroless and
   non-root, signed by digest.
+- Homebrew: formula is published as a Release asset and synced to the new
+  `paas-ops/homebrew-tap` tap (`brew tap paas-ops/homebrew-tap && brew install kubectl-triage`).
 - Docs: GitHub Pages static site, install/homebrew/quickstart/security/pilot guides and a
   pilot-request issue template.
 - Telemetry: opt-in anonymous events, disabled by default; fixed 10-field whitelist, no

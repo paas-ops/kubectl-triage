@@ -177,7 +177,7 @@ kubectl-triage version</code></pre>
               <tr>
                 <th scope="row">Homebrew</th>
                 <td><code>brew tap paas-ops/homebrew-tap &amp;&amp; brew install kubectl-triage</code></td>
-                <td><span class="tag tag-wait">tap 建立后</span></td>
+                <td><span class="tag tag-ok">v0.3.0 起</span></td>
               </tr>
             </tbody>
           </table>
@@ -186,13 +186,13 @@ kubectl-triage version</code></pre>
         <div class="note-row">
           <p><strong>校验供应链：</strong>下载 <code>checksums.txt</code> 后先做 sha256 校验，再用
           <code>cosign verify-blob</code> 验证 keyless 签名，SBOM 为每个归档同名的 <code>*.cdx.json</code>。</p>
-          <p><strong>还没准备好 tap？</strong>Homebrew formula 会作为 Release 资产发布（<code>kubectl-triage.rb</code>），
-          可直接从资产安装；详细步骤见文档。</p>
+          <p><strong>Homebrew tap 已建立：</strong><code>brew tap paas-ops/homebrew-tap</code> 后安装；
+          formula 同时作为 Release 资产发布（<code>kubectl-triage.rb</code>），详细步骤见文档。</p>
         </div>
 
         <div class="link-row">
           <a class="text-link" href="https://github.com/paas-ops/kubectl-triage/blob/main/docs/install.md">安装与校验步骤（docs/install.md）<span aria-hidden="true">→</span></a>
-          <a class="text-link" href="https://github.com/paas-ops/kubectl-triage/blob/main/docs/homebrew.md">Homebrew 现状与 tap bootstrap（docs/homebrew.md）<span aria-hidden="true">→</span></a>
+          <a class="text-link" href="https://github.com/paas-ops/kubectl-triage/blob/main/docs/homebrew.md">Homebrew 安装与更新（docs/homebrew.md）<span aria-hidden="true">→</span></a>
         </div>
       </div>
     </section>
@@ -305,7 +305,7 @@ kubectl-triage eval testdata/golden --now 2026-10-30T14:00:00Z \
           <a class="doc-card" href="https://github.com/paas-ops/kubectl-triage/blob/main/docs/homebrew.md">
             <span class="doc-tag">分发</span>
             <h3>Homebrew</h3>
-            <p>formula 资产、tap bootstrap、HOMEBREW_TAP_GITHUB_TOKEN 与后续启用。</p>
+            <p>tap 安装、formula 手工同步、HOMEBREW_TAP_GITHUB_TOKEN 与后续启用。</p>
           </a>
           <a class="doc-card" href="https://github.com/paas-ops/kubectl-triage/blob/main/docs/security.md">
             <span class="doc-tag">安全</span>

@@ -1,8 +1,8 @@
 # Homebrew 安装（现状与 tap bootstrap）
 
 口径见 [ADR-005 D4](adr/ADR-005-M3实现口径.md)。一句话概括：
-**formula 会随每个 Release 作为资产发布；`paas-ops/homebrew-tap` 建立前，Homebrew 安装尚不可用。**
-在此之前请使用 [源码安装](install.md#1-源码安装) 或 [Release 二进制](install.md#2-release-二进制)。
+**formula 随每个 Release 作为资产发布，并已同步到 `paas-ops/homebrew-tap`（当前 `v0.3.0`）；
+`brew tap paas-ops/homebrew-tap && brew install kubectl-triage` 可用。**
 
 ## 当前状态
 
@@ -10,14 +10,33 @@
 | --- | --- |
 | GoReleaser 生成 Homebrew formula | ✅ 每个 `v*` Release 产出 `kubectl-triage.rb`（`brews` 配置） |
 | formula 作为 Release 资产上传 | ✅ 与 `tar.gz` / `checksums.txt` 同一 Release |
-| tap 仓库 `paas-ops/homebrew-tap` | ⏳ 尚未建立 |
-| tap 自动推送（`HOMEBREW_TAP_GITHUB_TOKEN`） | ⏳ 未配置 secret |
-| 用户命令 `brew install kubectl-triage` | ⏳ tap 建立后可用 |
+| tap 仓库 `paas-ops/homebrew-tap` | ✅ 已建立（`Formula/kubectl-triage.rb`，`v0.3.0`） |
+| tap 自动推送（`HOMEBREW_TAP_GITHUB_TOKEN`） | ⏳ 未配置 secret（新版本目前手工同步） |
+| 用户命令 `brew install kubectl-triage` | ✅ 可用（`v0.3.0`） |
 
 formula 由 GoReleaser 生成后在主仓库 Release 中提供（`skip_upload: true`），其中已包含各平台
-归档的 `url` 与 `sha256`；tap 建立后可直接使用，不需要手写版本号。
+归档的 `url` 与 `sha256`；tap 已同步该 formula，不需要手写版本号。
 
-## tap 建立后：用户安装命令
+## 当前 tap 内容与手工同步（新版本）
+
+tap 当前包含 `v0.3.0` formula。在 `HOMEBREW_TAP_GITHUB_TOKEN` 配置前，之后每个版本由维护者手工同步：
+
+1. 从新 Release 下载 `kubectl-triage.rb`；
+2. 核对 `version`、四个归档 URL 与 `sha256`（与 `checksums.txt` 一致）；
+3. 提交到 tap 的 `Formula/kubectl-triage.rb`：
+
+   ```bash
+   git clone git@github.com:paas-ops/homebrew-tap.git
+   cd homebrew-tap
+   cp /path/to/kubectl-triage.rb Formula/kubectl-triage.rb
+   git add Formula/kubectl-triage.rb
+   git commit -m "kubectl-triage <version>"
+   git push
+   ```
+
+4. `brew update && brew upgrade kubectl-triage` 验证。
+
+## 用户安装命令（已可用）
 
 ```bash
 brew tap paas-ops/homebrew-tap
@@ -29,9 +48,9 @@ brew uninstall kubectl-triage
 brew untap paas-ops/homebrew-tap
 ```
 
-## tap bootstrap 步骤（维护者）
+## tap bootstrap 记录（2026-10-30 已完成，留作复现参考）
 
-tap 建立前，先照常发布 `v0.3.0`（release workflow 跑完、Release 资产齐全）。
+`v0.3.0` Release 产物齐全后执行：
 
 1. **创建 tap 仓库**：在 `paas-ops` 下创建公开仓库 `homebrew-tap`，初始化为空仓库并保护 `main`
    （PR + 1 review，与主仓库一致）。
@@ -65,7 +84,7 @@ tap 建立前，先照常发布 `v0.3.0`（release workflow 跑完、Release 资
    没有测试定义，改用上面的 `kubectl-triage version` 冒烟即可。
 
 5. **更新 README/站点**：把 [docs/install.md](install.md) 与文档站中的 Homebrew 状态从
-   “tap 待建立”改为“可用”。这一步不要提前做——文档不承诺尚未验证的安装路径。
+   “tap 待建立”改为“可用”（2026-10-30 已更新）。
 
 ## 后续启用自动推送（可选）
 

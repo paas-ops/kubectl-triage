@@ -47,7 +47,7 @@ kubectl triage analyze /tmp/triage-demo
 | 源码（Go 1.24+） | `go install github.com/paas-ops/kubectl-triage/cmd/kubectl-triage@latest` | ✅ 立即可用 |
 | Release 二进制 | `kubectl-triage_<version>_<os>_<arch>.tar.gz`（darwin/linux × amd64/arm64） | ✅ `v0.3.0` 起 |
 | Docker / GHCR | `docker run --rm ghcr.io/paas-ops/kubectl-triage:v0.3.0 version` | ✅ `v0.3.0` 起 |
-| Homebrew | `brew tap paas-ops/homebrew-tap && brew install kubectl-triage` | ⏳ tap 建立后 |
+| Homebrew | `brew tap paas-ops/homebrew-tap && brew install kubectl-triage` | ✅ tap 已建立（v0.3.0 formula；新版本手工同步） |
 
 - 每个 Release 资产提供 sha256（`checksums.txt`）、cosign keyless 签名（`.sig` / `.pem`）与
   CycloneDX SBOM（`*.cdx.json`）；校验步骤见 [docs/install.md](docs/install.md)。
