@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/bavocado/kubectl-triage/internal/bundle"
+	"github.com/paas-ops/kubectl-triage/internal/bundle"
 )
 
 func TestAnalyzeExampleOOM(t *testing.T) {

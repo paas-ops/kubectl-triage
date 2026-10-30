@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/bavocado/kubectl-triage/pkg/schema/report.schema.json",
+  "$id": "https://github.com/paas-ops/kubectl-triage/pkg/schema/report.schema.json",
   "title": "kubectl-triage report",
   "type": "object",
   "additionalProperties": false,

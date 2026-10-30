@@ -13,8 +13,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/bavocado/kubectl-triage/internal/bundle"
-	"github.com/bavocado/kubectl-triage/internal/report"
+	"github.com/paas-ops/kubectl-triage/internal/bundle"
+	"github.com/paas-ops/kubectl-triage/internal/report"
 )
 
 type rule struct {

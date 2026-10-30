@@ -1,4 +1,4 @@
-module github.com/bavocado/kubectl-triage
+module github.com/paas-ops/kubectl-triage
 
 go 1.24.0
 

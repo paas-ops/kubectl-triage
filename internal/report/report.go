@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bavocado/kubectl-triage/internal/bundle"
+	"github.com/paas-ops/kubectl-triage/internal/bundle"
 )
 
 const SchemaVersion = "1.0"

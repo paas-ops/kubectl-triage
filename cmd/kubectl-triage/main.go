@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/bavocado/kubectl-triage/internal/cli"
+	"github.com/paas-ops/kubectl-triage/internal/cli"
 )
 
 var (

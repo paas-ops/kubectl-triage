@@ -11,7 +11,7 @@
 
 ```bash
 # 从源码安装（Go 1.24+）
-go install github.com/bavocado/kubectl-triage/cmd/kubectl-triage@latest
+go install github.com/paas-ops/kubectl-triage/cmd/kubectl-triage@latest
 
 # 或者本地构建
 go build -o kubectl-triage ./cmd/kubectl-triage

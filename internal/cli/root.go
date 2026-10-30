@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/bavocado/kubectl-triage/internal/analyze"
-	"github.com/bavocado/kubectl-triage/internal/bundle"
+	"github.com/paas-ops/kubectl-triage/internal/analyze"
+	"github.com/paas-ops/kubectl-triage/internal/bundle"
 	"github.com/spf13/cobra"
 )
 
