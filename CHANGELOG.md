@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.5.0 — 2026-10-30
+
+v1.0 preparation: schema compatibility gate, Windows builds and formal eval-set validation.
+
+- Schema compatibility baseline test in `pkg/schema`: pins required fields, enums and consts for
+  the incident/report contracts; intentional changes require `UPDATE_COMPAT=1` regeneration plus
+  CHANGELOG/migration notes; all 12 golden expected reports and `examples/` must validate.
+- Windows support: `windows/amd64` zip artifact (`kubectl-triage.exe`), a `windows-test` CI job
+  running build and tests, and a `windows/amd64` cross-build matrix entry (no windows/arm64).
+- `eval --validate [--min-cases N] [--json]`: validates an evaluation set without running
+  analysis (schema checks, duplicate case names, credential scan, case count); stable
+  `eval-set` JSON contract; exit codes 0/1/2.
+- Release assets v0.5.0: 5 archives (4 tar.gz + 1 zip), 3 checksum/signature files, 5 SBOMs and
+  the Homebrew formula (14 files); SBOM and verify-release coverage now include the Windows zip.
+- Docs: `docs/schema.md` (contract and versioning), Windows install section, eval-set contract.
+
 ## v0.4.0 — 2026-10-30
 
 Enterprise bridge (client only): optional `push` to a control plane.
