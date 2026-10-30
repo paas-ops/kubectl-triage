@@ -98,7 +98,7 @@ kubectl-triage 是一个**轻量、离线优先的 Kubernetes 事故诊断 CLI**
 | `validate <dir>` | schema、时间、脱敏与证据完整性校验 | `--redact strict|standard|off` |
 | `analyze <dir>` | 规则分析 + 报告 | `--offline`、`--model`、模型 4 flag、`--format`、`--out`、`--max-evidence`、`--redact`、`--fail-on-missing` |
 | `report <dir>` | 重新渲染已有报告（不重新分析） | `--format`、`--out` |
-| `eval <cases-dir>` | 本地评测 | `--json`、`--filter`、`--max-cases`、`--now`、`--validate`、`--min-cases`、模型 flags |
+| `eval <cases-dir>` | 本地评测 | `--json`、`--filter`、`--max-cases`、`--now`、`--validate`、`--min-cases`、`--compare`、模型 flags |
 | `telemetry status|enable|disable` | opt-in 匿名遥测管理 | — |
 | `push <dir>` | 推送报告到企业控制平面（显式 opt-in） | `--endpoint`、`--include-evidence`、`--max-bundle-bytes`、`--timeout`、`--dry-run`、`--out` |
 
@@ -197,7 +197,7 @@ evidence[], hypotheses[≤3], missing_data[], recommended_checks[], suggested_fi
 | Go 包 | 18 个（16 个有测试，2 个无测试包为装配层） |
 | 代码规模 | 约 19k 行 Go（其中测试约 10k 行） |
 | golden 用例 | 12 个（五类×2 + 缺失 + 注入），严格比对 + 确定性 + 反证不相交 |
-| 评测 | `eval` 评分（Top1/Top3/缺失/注入/降级）+ `--validate` 集合结构门禁 |
+| 评测 | `eval` 评分（Top1/Top3/缺失/注入/降级）+ `--validate` 集合结构门禁 + `--compare` 基线回归门禁 |
 | CI | 4 个 workflow：ci（test/cross-build/windows-test/release-check/docker-build）、release、verify-release、pages |
 | 契约门禁 | schema 基线测试、golden expected schema 校验、release 自验签 |
 | 默认离线测试 | push/model/telemetry 全部 stub/httptest，不触网 |
