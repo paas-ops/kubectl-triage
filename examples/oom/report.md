@@ -3,8 +3,8 @@
 - 事故：`example-oom`
 - 集群 / 命名空间：`local` / `checkout`
 - 工作负载：`checkout-api`
-- 观察时间：2026-10-30T06:58:49Z
-- 生成时间：2026-10-30T07:00:55Z
+- 观察时间：2026-10-30T07:19:53Z
+- 生成时间：2026-10-30T07:22:01Z
 - 模式：offline
 
 ## 摘要
@@ -15,15 +15,15 @@
 
 | ID | 来源 | 观察时间 | 采集时间 | 内容引用 | 摘要 |
 | --- | --- | --- | --- | --- | --- |
-| ev-002 | `logs` | 2026-10-30T06:58:49Z | 2026-10-30T06:58:54Z | `logs/app.log#L1` | 日志摘录 logs/app.log：2026-10-30T06:58:49Z INFO starting checkout-api |
-| ev-003 | `prometheus.metrics` | 2026-10-30T06:58:51Z | 2026-10-30T06:58:54Z | `metrics/memory.json` | Prometheus 指标快照 metrics/memory.json（resultType=matrix，1 个序列，2 个采样点，最新采样 2026-10-30T06:58:51Z） |
-| ev-001 | `k8s.events` | 2026-10-30T06:58:52Z | 2026-10-30T06:58:54Z | `k8s/events.json#items/0` | Warning OOMKilled: Container checkout-api was OOMKilled (exitCode=137)（Pod checkout-api-7d9f） |
+| ev-002 | `logs` | 2026-10-30T07:19:53Z | 2026-10-30T07:19:58Z | `logs/app.log#L1` | 日志摘录 logs/app.log：2026-10-30T07:19:53Z INFO starting checkout-api |
+| ev-003 | `prometheus.metrics` | 2026-10-30T07:19:55Z | 2026-10-30T07:19:58Z | `metrics/memory.json` | Prometheus 指标快照 metrics/memory.json（resultType=matrix，1 个序列，2 个采样点，最新采样 2026-10-30T07:19:55Z） |
+| ev-001 | `k8s.events` | 2026-10-30T07:19:56Z | 2026-10-30T07:19:58Z | `k8s/events.json#items/0` | Warning OOMKilled: Container checkout-api was OOMKilled (exitCode=137)（Pod checkout-api-7d9f） |
 
 ### 证据引用细节
 
-- `ev-002`：查询：loki query_range；脱敏级别：strict；sha256：sha256:fc56e1a4b24d21a27ee567f4f12575d8c13465a1bf6bc4bfcc984550c39d4202
-- `ev-003`：查询：prometheus query_range；脱敏级别：strict；sha256：sha256:d7d9e150f617c8b1f4a0ce7d4ab05137a349d4261dce3ca584d9ffb123ba26fa
-- `ev-001`：查询：kubectl get events -n checkout -o json；脱敏级别：strict；sha256：sha256:ed08a47b093745a08a8f8ce08c0259238f8571c42757ac6a7d39b1530fc2fed6
+- `ev-002`：查询：loki query_range；脱敏级别：strict；sha256：sha256:10a418de72df669dff64020893c81ec6946bb88dd3e8becf9adfc705c9e5f3e8
+- `ev-003`：查询：prometheus query_range；脱敏级别：strict；sha256：sha256:4c845b9aaaff166b42888a5702c2a20c8b840e2bba8b6ba56a41947fb8fbc9b4
+- `ev-001`：查询：kubectl get events -n checkout -o json；脱敏级别：strict；sha256：sha256:8f02eb961a15a6177cd9bd423f72809d883a9f72288987a921713e51f5066f59
 
 ## 候选根因
 
@@ -55,7 +55,7 @@
 
 ## 版本
 
-- cli：dev
+- cli：v0.0.0-20261030070119-9e8b8f27bf8f+dirty
 - model：none
 - rules：rule-v0.2
 

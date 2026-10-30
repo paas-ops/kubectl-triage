@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased — M1 offline MVP
+## v0.1.0 — 2026-10-30
+
+First milestone release: the M1 offline MVP.
 
 - `import alertmanager|kubectl|prometheus|loki` with deterministic canonical output and
   import-time credential scanning (exit code 4, nothing written on rejection).
@@ -13,6 +15,9 @@
 - `--redact strict|standard|off`; `--offline` vs `--model` mutual exclusion; exit codes 0/1/2/3/4.
 - 12 golden incident bundles (five classes x2 + missing + injection) with determinism,
   schema and prompt-injection assertions.
+- Clock-skew semantics: only an observation timestamp later than collection (>9s) is
+  flagged as skew; normal collection lag is reported separately (>=60s) and never as skew.
+- `go install ...@v0.1.0` binaries now report the module version via build metadata.
 - CI: gofmt, build, vet, tests and darwin/linux amd64/arm64 cross-builds.
 
 ## v0.0.1 — 2026-10-30
