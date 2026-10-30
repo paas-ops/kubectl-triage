@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.4.0 — 2026-10-30
+
+Enterprise bridge (client only): optional `push` to a control plane.
+
+- `push <dir>`: explicit opt-in only (`--endpoint` or `KUBECTL_TRIAGE_ENTERPRISE_ENDPOINT`, token
+  from `KUBECTL_TRIAGE_ENTERPRISE_TOKEN`), protocol 1.0, idempotent retries (3 attempts total),
+  `--dry-run` and `--out` payload dumps, optional redacted evidence bundle with
+  `--include-evidence` (default sends report + evidence hashes only), pre-flight schema and
+  credential scanning; exit codes 0/1/3/4.
+- Public protocol spec `docs/push-protocol.md` (v1.0) for server implementers, enterprise boundary
+  `docs/enterprise.md`, pilot playbook and metrics funnel docs.
+- Release pipeline self-verifies signatures; `verify-release` workflow re-checks published tags.
+- Offline default unchanged: `push` never runs without explicit configuration.
+
 ## Unreleased — M3.1 distribution hardening
 
 - Homebrew tap sync: the tap repository now runs a `sync-formula` workflow (daily schedule and
