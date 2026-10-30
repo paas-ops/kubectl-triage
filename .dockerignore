@@ -1,0 +1,27 @@
+# Version control, local tooling and caches.
+.git
+.gitignore
+.github
+.gocache
+.gomodcache
+
+# Build outputs and generated artifacts.
+dist
+kubectl-triage
+bin
+coverage.out
+
+# Repository-only docs and fixtures; not needed to build the CLI.
+docs
+site
+examples
+testdata
+
+# Editor, OS and local environment noise.
+.DS_Store
+.idea
+.vscode
+*.swp
+*.local
+.env
+.env.*

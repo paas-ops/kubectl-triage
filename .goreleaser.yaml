@@ -1,0 +1,70 @@
+# GoReleaser v2 configuration for kubectl-triage.
+# Local check: goreleaser check
+# Docs: https://goreleaser.com/customization/
+version: 2
+
+project_name: kubectl-triage
+
+builds:
+  - id: kubectl-triage
+    main: ./cmd/kubectl-triage
+    binary: kubectl-triage
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -X main.version={{ .Version }}
+      - -X main.commit={{ .Commit }}
+      - -X main.date={{ .Date }}
+
+archives:
+  - id: default
+    formats:
+      - tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - README.md
+      - LICENSE
+      - CHANGELOG.md
+
+checksum:
+  name_template: checksums.txt
+  algorithm: sha256
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+      - "^ci:"
+
+release:
+  github:
+    owner: paas-ops
+    name: kubectl-triage
+  draft: false
+  prerelease: auto
+  name_template: "{{ .ProjectName }} v{{ .Version }}"
+
+brews:
+  - name: kubectl-triage
+    repository:
+      owner: paas-ops
+      name: homebrew-tap
+    directory: Formula
+    homepage: "https://github.com/paas-ops/kubectl-triage"
+    description: "Offline-first Kubernetes incident triage CLI"
+    license: "Apache-2.0"
+    skip_upload: true
+    install: |
+      bin.install "kubectl-triage"
