@@ -60,6 +60,9 @@ kubectl triage analyze /tmp/triage-demo
 
 - [需求文档](docs/需求文档.md)：产品定位、CLI 交互、证据规范、开源/商业边界、指标与验收标准
 - [拆分计划](docs/拆分计划.md)：仓库拆分、模块结构、12 周里程碑、任务拆分、发布与度量计划
+- [ADR-002 契约口径](docs/adr/ADR-002-契约口径.md)：golden 基线、CLI 参数默认值等 6 项口径决策
+
+> 规划文档引用的 `CloudOps-Agent/创业商业方案.md` 属外部商业仓库，不随本仓库发布。
 
 ## 开源与商业边界
 
