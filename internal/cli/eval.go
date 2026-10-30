@@ -42,6 +42,7 @@ func newEvalCmd() *cobra.Command {
 		filter       string
 		maxCases     int
 		minCases     int
+		comparePath  string
 		nowText      string
 		provider     string
 		modelURL     string
@@ -63,11 +64,19 @@ from KUBECTL_TRIAGE_MODEL_KEY or OPENAI_API_KEY, never from flags.
 --validate switches to set validation (ADR-007 D4): it checks discovery, incident and
 expected-report schemas, unique case names, credential patterns and --min-cases without
 analyzing anything. --filter/--max-cases still apply; --now and model flags are ignored
-in validate mode.`,
+in validate mode.
+--compare loads a baseline saved from an earlier "eval ... --json" run, re-runs the
+current evaluation and reports per-case regressions/improvements. The gate exits 2 when
+any case regresses or a baseline case disappears; case additions never fail the gate.
+--json prints the stable eval-compare contract instead of the text summary.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if minCases < 0 {
 				return &ExitError{Code: 1, Err: fmt.Errorf("--min-cases 不能为负数")}
+			}
+			compareFile := strings.TrimSpace(comparePath)
+			if validateSet && compareFile != "" {
+				return &ExitError{Code: 1, Err: fmt.Errorf("--compare 与 --validate 不能同时使用")}
 			}
 			if validateSet {
 				return runEvalSetValidation(cmd, args[0], jsonOutput, filter, maxCases, minCases)
@@ -83,6 +92,16 @@ in validate mode.`,
 			if err := validateEvalModelConfig(modelCfg); err != nil {
 				return &ExitError{Code: 1, Err: err}
 			}
+			// Load the baseline before running the analyzer so a bad baseline
+			// fails fast (exit 1) instead of wasting a full eval run.
+			var baseline *eval.Result
+			if compareFile != "" {
+				loaded, err := eval.LoadBaseline(compareFile)
+				if err != nil {
+					return &ExitError{Code: 1, Err: err}
+				}
+				baseline = loaded
+			}
 			result, err := evalRunner(eval.Config{
 				CasesDir: args[0],
 				MaxCases: maxCases,
@@ -92,6 +111,27 @@ in validate mode.`,
 			})
 			if err != nil {
 				return &ExitError{Code: 1, Err: err}
+			}
+			if baseline != nil {
+				comparison := eval.Compare(baseline, result)
+				if jsonOutput {
+					data, err := json.MarshalIndent(comparison, "", "  ")
+					if err != nil {
+						return &ExitError{Code: 1, Err: fmt.Errorf("编码回归对比结果失败: %w", err)}
+					}
+					fmt.Fprintln(cmd.OutOrStdout(), string(data))
+				} else {
+					writeEvalCompareText(cmd.OutOrStdout(), compareFile, comparison)
+				}
+				// The regression gate is independent of the current pass rate:
+				// only regressions against the baseline (or baseline cases that
+				// disappeared) fail the run, so a stable known-failing set stays
+				// green while any metric rollback is caught.
+				if comparison.HasRegressions() {
+					return &ExitError{Code: 2, Err: fmt.Errorf("eval: 相对基线发现 %d 个回归用例、%d 个缺失用例",
+						comparison.Summary.Regressions, comparison.Summary.Missing)}
+				}
+				return nil
 			}
 			if jsonOutput {
 				data, err := json.MarshalIndent(result, "", "  ")
@@ -116,6 +156,7 @@ in validate mode.`,
 	cmd.Flags().IntVar(&maxCases, "max-cases", 0, "maximum number of cases to evaluate (0 = no cap)")
 	cmd.Flags().BoolVar(&validateSet, "validate", false, "only validate the evaluation set (schemas, unique names, credentials, --min-cases); does not analyze")
 	cmd.Flags().IntVar(&minCases, "min-cases", 0, "with --validate: require at least N cases (0 = no minimum)")
+	cmd.Flags().StringVar(&comparePath, "compare", "", "compare the current eval against a baseline eval JSON (from eval --json); exit 2 on regressions")
 	cmd.Flags().StringVar(&nowText, "now", "", "fixed clock for reproducible golden runs (RFC3339)")
 	cmd.Flags().StringVar(&provider, "model", "none", "model provider: none|ollama|openai-compatible")
 	cmd.Flags().StringVar(&modelURL, "model-url", "", "provider base URL (ollama default http://127.0.0.1:11434)")
@@ -262,6 +303,38 @@ func writeEvalSetText(w io.Writer, casesDir string, validation *eval.SetValidati
 		}
 	}
 	fmt.Fprintln(w)
+}
+
+// writeEvalCompareText renders the human-readable Chinese regression summary.
+func writeEvalCompareText(w io.Writer, baselinePath string, comparison *eval.CompareResult) {
+	fmt.Fprintf(w, "基线回归对比：%s", baselinePath)
+	fmt.Fprintln(w)
+	fmt.Fprintf(w, "基线：通过 %d/%d；当前：通过 %d/%d",
+		comparison.BaselineSummary.Pass, comparison.BaselineSummary.Total,
+		comparison.CurrentSummary.Pass, comparison.CurrentSummary.Total)
+	fmt.Fprintln(w)
+	fmt.Fprintf(w, "回归 %d，改进 %d，持平 %d，新增 %d，缺失 %d",
+		comparison.Summary.Regressions, comparison.Summary.Improvements,
+		comparison.Summary.Same, comparison.Summary.Added, comparison.Summary.Missing)
+	fmt.Fprintln(w)
+	for _, change := range comparison.Changes {
+		switch change.Status {
+		case eval.StatusRegressed:
+			fmt.Fprintf(w, "[回归] %s：%s", change.Name, strings.Join(change.Fields, ", "))
+			fmt.Fprintln(w)
+		case eval.StatusImproved:
+			fmt.Fprintf(w, "[改进] %s：%s", change.Name, strings.Join(change.Fields, ", "))
+			fmt.Fprintln(w)
+		case eval.StatusMissing:
+			fmt.Fprintf(w, "[缺失] %s：基线存在但当前集合没有该用例", change.Name)
+			fmt.Fprintln(w)
+		}
+	}
+	if comparison.HasRegressions() {
+		fmt.Fprintln(w, "回归警告：当前结果低于基线（pass/Top1/Top3/注入安全/降级/错误状态存在回退），质量门禁不通过；请修复回归，或在人工复核后更新基线。")
+	} else {
+		fmt.Fprintln(w, "无回归：当前结果不低于基线。")
+	}
 }
 
 // writeEvalText renders the human-readable Chinese table and summary.

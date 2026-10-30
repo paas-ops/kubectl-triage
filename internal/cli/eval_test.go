@@ -191,6 +191,7 @@ func TestEvalCommandModelFlagDefaults(t *testing.T) {
 		{"max-cases", "0"},
 		{"validate", "false"},
 		{"min-cases", "0"},
+		{"compare", ""},
 		{"now", ""},
 	}
 	for _, tc := range wants {
@@ -472,4 +473,223 @@ func TestEvalCommandValidateIgnoresAnalysisFlags(t *testing.T) {
 	// model flags have no effect; this keeps CI command lines composable.
 	res := runEvalCommand(t, "eval", evalGoldenDir, "--validate", "--now", "not-a-timestamp", "--model", "bananas")
 	requireEvalExit(t, res, 0)
+}
+
+// evalGoldenBaselineFile saves the current golden eval Result as a baseline file
+// and returns its path plus the parsed baseline.
+func evalGoldenBaselineFile(t *testing.T) (string, eval.Result) {
+	t.Helper()
+	res := runEvalCommand(t, "eval", evalGoldenDir, "--json", "--now", "2026-10-30T14:00:00Z")
+	requireEvalExit(t, res, 0)
+	var baseline eval.Result
+	if err := json.Unmarshal([]byte(strings.TrimSpace(res.out)), &baseline); err != nil {
+		t.Fatalf("parse golden baseline: %v", err)
+	}
+	return writeEvalCompareBaselineFile(t, baseline), baseline
+}
+
+func writeEvalCompareBaselineFile(t *testing.T, baseline eval.Result) string {
+	t.Helper()
+	data, err := json.MarshalIndent(baseline, "", "  ")
+	if err != nil {
+		t.Fatalf("marshal baseline: %v", err)
+	}
+	path := filepath.Join(t.TempDir(), "baseline.json")
+	writeEvalCLIFile(t, path, string(data))
+	return path
+}
+
+func parseEvalCompareResult(t *testing.T, out string) eval.CompareResult {
+	t.Helper()
+	var comparison eval.CompareResult
+	if err := json.Unmarshal([]byte(strings.TrimSpace(out)), &comparison); err != nil {
+		t.Fatalf("parse eval-compare JSON: %v (out=%q)", err, out)
+	}
+	return comparison
+}
+
+func findEvalCompareChange(t *testing.T, comparison eval.CompareResult, name string) eval.CompareChange {
+	t.Helper()
+	for _, change := range comparison.Changes {
+		if change.Name == name {
+			return change
+		}
+	}
+	t.Fatalf("change %q not found in %+v", name, comparison.Changes)
+	return eval.CompareChange{}
+}
+
+func TestEvalCommandCompareSameSet(t *testing.T) {
+	baselinePath, _ := evalGoldenBaselineFile(t)
+	text := runEvalCommand(t, "eval", evalGoldenDir, "--now", "2026-10-30T14:00:00Z", "--compare", baselinePath)
+	requireEvalExit(t, text, 0)
+	for _, want := range []string{"基线回归对比", "回归 0", "无回归"} {
+		if !strings.Contains(text.out, want) {
+			t.Fatalf("compare output missing %q: %q", want, text.out)
+		}
+	}
+
+	jsonRes := runEvalCommand(t, "eval", evalGoldenDir, "--json", "--now", "2026-10-30T14:00:00Z", "--compare", baselinePath)
+	requireEvalExit(t, jsonRes, 0)
+	comparison := parseEvalCompareResult(t, jsonRes.out)
+	if comparison.Kind != eval.CompareKind || comparison.Version != eval.CompareContractVersion {
+		t.Fatalf("kind/version = %q/%q", comparison.Kind, comparison.Version)
+	}
+	if comparison.Summary != (eval.CompareSummary{Same: 12}) {
+		t.Fatalf("summary = %+v", comparison.Summary)
+	}
+	if len(comparison.Changes) != 12 {
+		t.Fatalf("changes = %d, want 12", len(comparison.Changes))
+	}
+	for _, change := range comparison.Changes {
+		if change.Status != eval.StatusSame || len(change.Fields) != 0 {
+			t.Fatalf("change = %+v", change)
+		}
+	}
+	if comparison.HasRegressions() {
+		t.Fatal("same set must not regress")
+	}
+
+	again := runEvalCommand(t, "eval", evalGoldenDir, "--json", "--now", "2026-10-30T14:00:00Z", "--compare", baselinePath)
+	requireEvalExit(t, again, 0)
+	if strings.TrimSpace(jsonRes.out) != strings.TrimSpace(again.out) {
+		t.Fatal("eval-compare --json output must be deterministic across runs")
+	}
+}
+
+func TestEvalCommandCompareRegression(t *testing.T) {
+	baselinePath, baseline := evalGoldenBaselineFile(t)
+	for i := range baseline.Cases {
+		if baseline.Cases[i].Name == "missing-01" {
+			baseline.Cases[i].Top1 = true
+			baseline.Cases[i].Top3 = true
+		}
+	}
+	baselinePath = writeEvalCompareBaselineFile(t, baseline)
+
+	text := runEvalCommand(t, "eval", evalGoldenDir, "--now", "2026-10-30T14:00:00Z", "--compare", baselinePath)
+	requireEvalExit(t, text, 2)
+	for _, want := range []string{"[回归] missing-01", "top1, top3", "回归警告"} {
+		if !strings.Contains(text.out, want) {
+			t.Fatalf("compare output missing %q: %q", want, text.out)
+		}
+	}
+
+	jsonRes := runEvalCommand(t, "eval", evalGoldenDir, "--json", "--now", "2026-10-30T14:00:00Z", "--compare", baselinePath)
+	requireEvalExit(t, jsonRes, 2)
+	comparison := parseEvalCompareResult(t, jsonRes.out)
+	if comparison.Summary.Regressions != 1 || comparison.Summary.Same != 11 || comparison.Summary.Missing != 0 {
+		t.Fatalf("summary = %+v", comparison.Summary)
+	}
+	change := findEvalCompareChange(t, comparison, "missing-01")
+	if change.Status != eval.StatusRegressed {
+		t.Fatalf("missing-01 status = %q", change.Status)
+	}
+	if strings.Join(change.Fields, ",") != "top1,top3" {
+		t.Fatalf("missing-01 fields = %v", change.Fields)
+	}
+}
+
+func TestEvalCommandCompareImprovement(t *testing.T) {
+	baselinePath, baseline := evalGoldenBaselineFile(t)
+	for i := range baseline.Cases {
+		if baseline.Cases[i].Name == "oom-01" {
+			baseline.Cases[i].Top1 = false
+			baseline.Cases[i].Top3 = false
+		}
+	}
+	baselinePath = writeEvalCompareBaselineFile(t, baseline)
+
+	jsonRes := runEvalCommand(t, "eval", evalGoldenDir, "--json", "--now", "2026-10-30T14:00:00Z", "--compare", baselinePath)
+	requireEvalExit(t, jsonRes, 0)
+	comparison := parseEvalCompareResult(t, jsonRes.out)
+	if comparison.Summary.Improvements != 1 || comparison.Summary.Regressions != 0 {
+		t.Fatalf("summary = %+v", comparison.Summary)
+	}
+	change := findEvalCompareChange(t, comparison, "oom-01")
+	if change.Status != eval.StatusImproved {
+		t.Fatalf("oom-01 status = %q", change.Status)
+	}
+	if strings.Join(change.Fields, ",") != "top1,top3" {
+		t.Fatalf("oom-01 fields = %v", change.Fields)
+	}
+}
+
+func TestEvalCommandCompareInputErrors(t *testing.T) {
+	baselinePath, _ := evalGoldenBaselineFile(t)
+	invalidJSON := filepath.Join(t.TempDir(), "invalid.json")
+	writeEvalCLIFile(t, invalidJSON, "{not json")
+	wrongKind := filepath.Join(t.TempDir(), "wrong-kind.json")
+	writeEvalCLIFile(t, wrongKind, `{"kind":"eval-set","version":"1.0","cases":[],"summary":{}}`)
+	wrongVersion := filepath.Join(t.TempDir(), "wrong-version.json")
+	writeEvalCLIFile(t, wrongVersion, `{"kind":"eval","version":"2.0","cases":[],"summary":{}}`)
+	emptyCases := filepath.Join(t.TempDir(), "empty-cases.json")
+	writeEvalCLIFile(t, emptyCases, `{"kind":"eval","version":"1.0","cases":[],"summary":{}}`)
+
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{"missing baseline", []string{"eval", evalGoldenDir, "--compare", filepath.Join(t.TempDir(), "missing.json")}},
+		{"invalid baseline", []string{"eval", evalGoldenDir, "--compare", invalidJSON}},
+		{"wrong kind", []string{"eval", evalGoldenDir, "--compare", wrongKind}},
+		{"wrong version", []string{"eval", evalGoldenDir, "--compare", wrongVersion}},
+		{"empty baseline cases", []string{"eval", evalGoldenDir, "--compare", emptyCases}},
+		{"compare with validate", []string{"eval", evalGoldenDir, "--compare", baselinePath, "--validate"}},
+		{"missing cases dir", []string{"eval", filepath.Join(t.TempDir(), "missing-set"), "--compare", baselinePath}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			res := runEvalCommand(t, tc.args...)
+			requireEvalExit(t, res, 1)
+		})
+	}
+}
+
+// TestEvalCommandCompareFiltersCurrentSet freezes the interaction rule:
+// --filter/--max-cases only shape the current run, so baseline cases outside
+// the filtered selection are reported missing and fail the gate.
+func TestEvalCommandCompareFiltersCurrentSet(t *testing.T) {
+	baselinePath, _ := evalGoldenBaselineFile(t)
+	jsonRes := runEvalCommand(t, "eval", evalGoldenDir, "--json", "--now", "2026-10-30T14:00:00Z",
+		"--compare", baselinePath, "--filter", "missing")
+	requireEvalExit(t, jsonRes, 2)
+	comparison := parseEvalCompareResult(t, jsonRes.out)
+	if comparison.Summary.Same != 1 || comparison.Summary.Missing != 11 {
+		t.Fatalf("summary = %+v", comparison.Summary)
+	}
+	if !comparison.HasRegressions() {
+		t.Fatal("missing baseline cases must fail the gate")
+	}
+}
+
+// TestEvalCommandCompareStableFailuresStayGreen proves the gate compares
+// against the baseline instead of the absolute pass rate: a known stable
+// failure that also failed in the baseline is not a regression.
+func TestEvalCommandCompareStableFailuresStayGreen(t *testing.T) {
+	original := evalRunner
+	defer func() { evalRunner = original }()
+	canned := eval.Result{
+		Kind:    eval.Kind,
+		Version: eval.ContractVersion,
+		Cases: []eval.CaseResult{{
+			Name:          "known-fail",
+			Pass:          false,
+			Top1:          false,
+			Top3:          false,
+			MissingOK:     true,
+			InjectionSafe: true,
+		}},
+		Summary: eval.Summary{Total: 1, MissingOK: 1, InjectionSafe: 1},
+	}
+	evalRunner = func(cfg eval.Config) (*eval.Result, error) {
+		return &canned, nil
+	}
+	baselinePath := writeEvalCompareBaselineFile(t, canned)
+	res := runEvalCommand(t, "eval", "some-cases", "--json", "--compare", baselinePath)
+	requireEvalExit(t, res, 0)
+	comparison := parseEvalCompareResult(t, res.out)
+	if comparison.Summary.Same != 1 || comparison.HasRegressions() {
+		t.Fatalf("stable failure must stay green: %+v", comparison.Summary)
+	}
 }
